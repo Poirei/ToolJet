@@ -1,9 +1,16 @@
-export const staticDataSources = [
+import { isWorkflowsFeatureEnabled } from '@/modules/common/helpers/utils';
+
+const allStaticDataSources = [
   { kind: 'restapi', id: 'null', name: 'REST API', shortName: 'REST API' },
   { kind: 'runjs', id: 'runjs', name: 'Run JavaScript code', shortName: 'JavaScript' },
   { kind: 'runpy', id: 'runpy', name: 'Run Python code', shortName: 'Python' },
   { kind: 'tooljetdb', id: 'null', name: 'ToolJet Database', shortName: 'ToolJet DB' },
+  { kind: 'workflows', id: 'null', name: 'Run Workflow', shortName: 'Workflows' },
 ];
+
+export const staticDataSources = allStaticDataSources.filter(
+  (source) => source.kind !== 'workflows' || isWorkflowsFeatureEnabled()
+);
 
 export const tabs = ['JSON', 'Raw'];
 
@@ -34,20 +41,31 @@ export const customToggles = {
   runOnPageLoad: {
     dataCy: 'run-on-app-load',
     action: 'runOnPageLoad',
-    label: 'Run this query on application load?',
+    label: 'Run this query on application load',
     translatedLabel: 'editor.queryManager.runQueryOnApplicationLoad',
   },
   requestConfirmation: {
     dataCy: 'confirmation-before-run',
     action: 'requestConfirmation',
-    label: 'Request confirmation before running query?',
+    label: 'Request confirmation before running query',
     translatedLabel: 'editor.queryManager.confirmBeforeQueryRun',
   },
   showSuccessNotification: {
     dataCy: 'notification-on-success',
     action: 'showSuccessNotification',
-    label: 'Show notification on success?',
+    label: 'Show notification on success',
     translatedLabel: 'editor.queryManager.notificationOnSuccess',
+  },
+};
+
+export const RestAPIToggles = {
+  retryOnNetworkError: {
+    dataCy: 'retry-on-network-error',
+    action: 'retry_network_errors', // This is the key for restapi query options
+    label: 'Retry on network errors',
+    subLabel:
+      'By default, ToolJet tries to hit the API endpoint 3 times before declaring the query failed as the server did not respond.',
+    translatedLabel: 'editor.queryManager.retryOnNetworkError',
   },
 };
 
@@ -67,11 +85,13 @@ export const schemaUnavailableOptions = {
   restapi: {
     method: 'get',
     url: '',
-    url_params: [['', '']],
-    headers: [['', '']],
-    body: [['', '']],
+    url_params: [],
+    headers: [],
+    cookies: [],
+    body: [],
     json_body: null,
     body_toggle: false,
+    retry_network_errors: null,
   },
   stripe: {},
   tooljetdb: {
@@ -82,11 +102,26 @@ export const schemaUnavailableOptions = {
     parameters: [],
   },
   runpy: {},
+  workflows: {},
 };
 
-export const defaultSources = {
+const allDefaultSources = {
   restapi: { kind: 'restapi', id: 'null', name: 'REST API' },
   runjs: { kind: 'runjs', id: 'runjs', name: 'Run JavaScript code' },
   tooljetdb: { kind: 'tooljetdb', id: 'null', name: 'Tooljet Database' },
   runpy: { kind: 'runpy', id: 'runpy', name: 'Run Python code' },
+  workflows: { kind: 'workflows', id: 'null', name: 'Run Workflow' },
+};
+
+export const defaultSources = isWorkflowsFeatureEnabled()
+  ? allDefaultSources
+  : Object.fromEntries(
+      Object.entries(allDefaultSources).filter(([key]) => key !== 'workflows')
+    );
+
+export const workflowDefaultSources = {
+  ...defaultSources,
+  'If condition': { kind: 'if', id: 'if', name: 'If condition' },
+  Response: { kind: 'response', id: 'response', name: 'Response' },
+  Loop: { kind: 'loop', id: 'loop', name: 'Loop' },
 };

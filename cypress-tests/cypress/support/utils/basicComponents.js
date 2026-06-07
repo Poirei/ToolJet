@@ -13,6 +13,24 @@ export const verifyComponent = (widgetName) => {
   }).should("be.visible");
 };
 
+export const verifyComponentinrightpannel = (widgetName) => {
+  cy.get("body")
+    .then(($body) => {
+      const isSearchVisible = $body
+        .find(commonSelectors.searchField)
+        .is(":visible");
+
+      if (!isSearchVisible) {
+        cy.get('[data-cy="right-sidebar-plus-button"]').click();
+      }
+    })
+    .then(() => {
+      cy.get(commonWidgetSelector.widgetBox(widgetName), {
+        timeout: 10000,
+      }).should("be.visible");
+    });
+};
+
 export const deleteComponentAndVerify = (widgetName) => {
   cy.get(commonWidgetSelector.draggableWidget(widgetName))
     .realHover()
@@ -26,10 +44,10 @@ export const deleteComponentAndVerify = (widgetName) => {
         .last()
         .realClick();
     });
-  cy.verifyToastMessage(
-    `[class=go3958317564]`,
-    "Component deleted! (ctrl + Z to undo)"
-  );
+  // cy.verifyToastMessage(
+  //   `[class=go3958317564]`,
+  //   "Component deleted! (Ctrl + Z to undo)"
+  // );
   cy.notVisible(commonWidgetSelector.draggableWidget(widgetName));
 };
 

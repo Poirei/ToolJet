@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-export default function styles(darkMode, width = 224, height = 32, styles = {}) {
+export default function styles(darkMode, width = 224, height = 32, styles = {}, borderRadius) {
   return {
     container: (provided) => ({
       ...provided,
@@ -26,6 +26,7 @@ export default function styles(darkMode, width = 224, height = 32, styles = {}) 
       height: height,
       minHeight: height,
       cursor: styles.cursor ?? 'pointer',
+      ...(borderRadius ? { borderRadius } : {}),
     }),
     valueContainer: (provided, state) => ({
       ...provided,
@@ -56,6 +57,11 @@ export default function styles(darkMode, width = 224, height = 32, styles = {}) 
       ':hover': {
         backgroundColor: darkMode ? '#323C4B' : '#d8dce9',
       },
+      minHeight: '40px', // or whatever height you want
+      padding: '10px 12px', // adjust padding to vertically center the text
+      display: 'flex',
+      alignItems: 'center',
+      fontSize: styles.fontSize ?? '12px',
     }),
     placeholder: (provided) => ({
       ...provided,
@@ -64,6 +70,7 @@ export default function styles(darkMode, width = 224, height = 32, styles = {}) 
     singleValue: (provided) => ({
       ...provided,
       color: darkMode ? '#fff' : '#232e3c',
+      fontSize: styles.fontSize ?? '12px',
     }),
     menuPortal: (provided) => ({ ...provided, zIndex: 2000 }),
   };
@@ -84,6 +91,10 @@ export function queryManagerSelectComponentStyle(darkMode, width = 224, height =
       ':hover': {
         backgroundColor: darkMode ? '#323C4B' : '#F8FAFF',
       },
+      minHeight: '40px', // or your desired height
+      padding: '10px 12px',
+      display: 'flex',
+      alignItems: 'center',
     }),
     control: (provided) => ({
       ...provided,

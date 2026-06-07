@@ -1,6 +1,6 @@
 import { create, zustandDevTools } from './utils';
 import { getDefaultOptions } from './storeHelper';
-import { dataqueryService } from '@/_services';
+import { dataqueryService, orgEnvironmentConstantService } from '@/_services';
 // import debounce from 'lodash/debounce';
 import { useAppDataStore } from '@/_stores/appDataStore';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,13 +9,15 @@ import _, { isEmpty, throttle } from 'lodash';
 import { shallow } from 'zustand/shallow';
 import { getCurrentState, useCurrentStateStore } from './currentStateStore';
 import { useResolveStore } from './resolverStore';
-import { handleReferenceTransactions } from './handleReferenceTransactions';
+// import { handleReferenceTransactions } from './handleReferenceTransactions';
 import { useAppVersionStore } from '@/_stores/appVersionStore';
 import { useEditorStore } from '@/_stores/editorStore';
 import { useQueryPanelStore } from '@/_stores/queryPanelStore';
 
+const secretValue = '**********';
 const initialState = {
   dataQueries: [],
+  secrets: [],
   sortBy: 'updated_at',
   sortOrder: 'desc',
   loadingDataQueries: true,
@@ -38,6 +40,7 @@ export const useDataQueriesStore = create(
         fetchDataQueries: async (appVersionId, selectFirstQuery = false, runQueriesOnAppLoad = false, ref) => {
           get().loadingDataQueries && set({ loadingDataQueries: true });
           const data = await dataqueryService.getAll(appVersionId);
+          const { constants } = await orgEnvironmentConstantService.getAllSecrets();
 
           const diff = _.differenceWith(data.data_queries, get().dataQueries, _.isEqual);
           const referencesManager = useResolveStore.getState().referenceMapper;
@@ -57,6 +60,10 @@ export const useDataQueriesStore = create(
           set((state) => ({
             dataQueries: sortByAttribute(data.data_queries, state.sortBy, state.sortOrder),
             loadingDataQueries: false,
+            secrets: constants.reduce((acc, constant) => {
+              acc[constant.name] = secretValue;
+              return acc;
+            }, {}),
           }));
 
           // Compute query state to be added in the current state
@@ -281,7 +288,7 @@ export const useDataQueriesStore = create(
                 dataQueries: state.dataQueries.filter((query) => query.id !== tempId),
               }));
               actions.setSelectedQuery(null);
-              toast.error(`Failed to create query: ${error.message}`);
+              toast.error(`Failed to create query: ${error.message ?? error.error}`);
             })
             .finally(() => useAppDataStore.getState().actions.setIsSaving(false));
         },
@@ -329,6 +336,9 @@ export const useDataQueriesStore = create(
                 },
               });
             })
+            .catch((error) => {
+              toast.error(`Failed to rename query: ${error.message ?? error.error}`);
+            })
             .finally(() => {
               useAppDataStore.getState().actions.setIsSaving(false);
 
@@ -360,15 +370,15 @@ export const useDataQueriesStore = create(
               const components = appDefinition.pages[currentPageId].components;
               const currentVersionId = useAppDataStore.getState().currentVersionId;
 
-              handleReferenceTransactions(
-                components,
-                dataQueries,
-                currentAppEvents,
-                appDefinition,
-                currentPageId,
-                currentVersionId,
-                updatedNames
-              );
+              // handleReferenceTransactions(
+              //   components,
+              //   dataQueries,
+              //   currentAppEvents,
+              //   appDefinition,
+              //   currentPageId,
+              //   currentVersionId,
+              //   updatedNames
+              // );
             });
         },
         changeDataQuery: (newDataSource) => {
@@ -377,8 +387,9 @@ export const useDataQueriesStore = create(
             isUpdatingQueryInProcess: true,
           });
           useAppDataStore.getState().actions.setIsSaving(true);
+          const appVersionId = useAppVersionStore.getState().editingVersion?.id;
           dataqueryService
-            .changeQueryDataSource(selectedQuery?.id, newDataSource.id)
+            .changeQueryDataSource(selectedQuery?.id, newDataSource.id, appVersionId)
             .then(() => {
               set((state) => ({
                 isUpdatingQueryInProcess: false,
@@ -392,7 +403,8 @@ export const useDataQueriesStore = create(
               useQueryPanelStore.getState().actions.setSelectedQuery(selectedQuery.id);
               useQueryPanelStore.getState().actions.setSelectedDataSource(newDataSource);
             })
-            .catch(() => {
+            .catch((error) => {
+              toast.error(`Failed to change data query: ${error.message ?? error.error}`);
               set({
                 isUpdatingQueryInProcess: false,
               });
@@ -462,7 +474,15 @@ export const useDataQueriesStore = create(
                   useAppDataStore.getState().actions?.createAppVersionEventHandlers(newEvent);
                 })
               );
-            });
+            })
+            .catch((error) => {
+              console.error('error', error);
+              toast.error(`Failed to duplicate query: ${error.message ?? error.error}`);
+              set({
+                creatingQueryInProcessId: null,
+              });
+            })
+            .finally(() => useAppDataStore.getState().actions.setIsSaving(false));
         },
 
         // createDataQuery: (appId, appVersionId, options, kind, name, selectedDataSource, shouldRunQuery) => {

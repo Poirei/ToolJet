@@ -5,6 +5,14 @@ export type SourceOptions = {
   port: string;
   username: string;
   password: string;
+  ca_cert: string;
+  client_cert: string;
+  client_key: string;
+  tls_certificate: string;
+  connection_format: string;
+  use_ssl: boolean,
+  query_params: string
+  connection_string: string;
 };
 export type QueryOptions = {
   operation: string;

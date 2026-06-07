@@ -1,17 +1,14 @@
 import React from 'react';
 import _ from 'lodash';
-import Select from 'react-select';
+import Select, { components } from 'react-select';
 import defaultStyles from './styles';
 
-export const SelectComponent = ({
-  options = [],
-  value,
-  onChange,
-  closeMenuOnSelect,
-  classNamePrefix,
-  darkMode,
-  ...restProps
-}) => {
+const CustomInput = (props) => {
+  return <components.Input {...props} data-cy={`${props.selectProps.dataCy || ''}-select-dropdown-input`} />;
+};
+
+export const SelectComponent = ({ options = [], value, onChange, closeMenuOnSelect, darkMode, ...restProps }) => {
+  const selectRef = React.useRef(null);
   const isDarkMode = darkMode ?? localStorage.getItem('darkMode') === 'true';
   const {
     isMulti = false,
@@ -29,9 +26,14 @@ export const SelectComponent = ({
     menuPlacement = 'auto',
     useCustomStyles = false,
     isDisabled = false,
+    borderRadius,
+    openMenuOnFocus = false,
+    customClassPrefix = '',
+    dataCy = '',
   } = restProps;
 
-  const customStyles = useCustomStyles ? styles : defaultStyles(isDarkMode, width, height, styles);
+  const customStyles = useCustomStyles ? styles : defaultStyles(isDarkMode, width, height, styles, borderRadius);
+
   const selectOptions =
     Array.isArray(options) && options.length === 0
       ? options
@@ -56,13 +58,14 @@ export const SelectComponent = ({
     if (customOption) {
       return customOption(option);
     }
-
     return option.label;
   };
 
   return (
     <Select
       {...restProps}
+      ref={selectRef}
+      selectRef={selectRef} // Exposed ref for custom components if needed
       isLoading={isLoading}
       isDisabled={isDisabled || isLoading}
       options={selectOptions}
@@ -71,12 +74,17 @@ export const SelectComponent = ({
       onChange={handleOnChange}
       placeholder={placeholder}
       styles={customStyles}
+      openMenuOnFocus={openMenuOnFocus}
       formatOptionLabel={(option) => renderCustomOption(option)}
       menuPlacement={menuPlacement}
       maxMenuHeight={maxMenuHeight}
       menuPortalTarget={useMenuPortal ? document.body : menuPortalTarget}
       closeMenuOnSelect={closeMenuOnSelect ?? true}
-      classNamePrefix={`${isDarkMode && 'dark-theme'} ${'react-select'}`}
+      classNamePrefix={`${customClassPrefix} ${isDarkMode && 'dark-theme'} ${'react-select'}`}
+      components={{
+        Input: CustomInput,
+        ...restProps.components,
+      }}
     />
   );
 };

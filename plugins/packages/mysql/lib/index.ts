@@ -1,6 +1,7 @@
-import { Knex, knex } from 'knex';
+import knex, { Knex } from 'knex';
 import {
-  cacheConnection,
+  cacheConnectionWithConfiguration,
+  generateSourceOptionsHash,
   getCachedConnection,
   ConnectionTestResult,
   QueryService,
@@ -8,15 +9,21 @@ import {
   QueryError,
 } from '@tooljet-plugins/common';
 import { SourceOptions, QueryOptions } from './types';
+import { isEmpty } from '@tooljet-plugins/common';
 
 export default class MysqlQueryService implements QueryService {
   private static _instance: MysqlQueryService;
+  private STATEMENT_TIMEOUT;
 
   constructor() {
+    this.STATEMENT_TIMEOUT =
+      process.env?.PLUGINS_SQL_DB_STATEMENT_TIMEOUT && !isNaN(Number(process.env?.PLUGINS_SQL_DB_STATEMENT_TIMEOUT))
+        ? Number(process.env.PLUGINS_SQL_DB_STATEMENT_TIMEOUT)
+        : 120000;
+
     if (MysqlQueryService._instance) {
       return MysqlQueryService._instance;
     }
-
     MysqlQueryService._instance = this;
     return MysqlQueryService._instance;
   }
@@ -27,67 +34,128 @@ export default class MysqlQueryService implements QueryService {
     dataSourceId: string,
     dataSourceUpdatedAt: string
   ): Promise<QueryResult> {
-    let result = {
-      rows: [],
-    };
-    let query = '';
-
-    if (queryOptions.mode === 'gui') {
-      if (queryOptions.operation === 'bulk_update_pkey') {
-        query = await this.buildBulkUpdateQuery(queryOptions);
+    let checkCache, knexInstance;
+    if (sourceOptions['allow_dynamic_connection_parameters']) {
+      if (sourceOptions.connection_type === 'hostname') {
+        sourceOptions['host'] = queryOptions['host'] ? queryOptions['host'] : sourceOptions['host'];
+        sourceOptions['database'] = queryOptions['database'] ? queryOptions['database'] : sourceOptions['database'];
+      } else if (sourceOptions.connection_type === 'socket_path') {
+        sourceOptions['database'] = queryOptions['database'] ? queryOptions['database'] : sourceOptions['database'];
       }
-    } else {
-      query = queryOptions.query;
     }
-
-    const knexInstance = await this.getConnection(sourceOptions, {}, true, dataSourceId, dataSourceUpdatedAt);
 
     try {
-      result = await knexInstance.raw(query);
-    } catch (err) {
-      console.log(err);
-      throw new QueryError('Query could not be completed', err.message, {});
-    }
+      // If dynamic connection parameters is toggled on - We don't cache the connection also destroy the connection created.
+      checkCache = sourceOptions['allow_dynamic_connection_parameters'] ? false : true;
+      knexInstance = await this.getConnection(sourceOptions, {}, checkCache, dataSourceId, dataSourceUpdatedAt);
 
-    return {
-      status: 'ok',
-      data: result[0],
-    };
+      switch (queryOptions.mode) {
+        case 'sql':
+          return await this.handleRawQuery(knexInstance, queryOptions);
+        case 'gui':
+          return await this.handleGuiQuery(knexInstance, queryOptions);
+        default:
+          throw new Error("Invalid query mode. Must be either 'sql' or 'gui'.");
+      }
+    } catch (err) {
+      const errorMessage = err.message || 'An unknown error occurred';
+      const errorDetails: any = {};
+
+      if (err instanceof Error) {
+        const mysqlError = err as any;
+        const { code, errno, sqlMessage, sqlState } = mysqlError;
+
+        errorDetails.code = code || null;
+        errorDetails.errno = errno || null;
+        errorDetails.sqlMessage = sqlMessage || null;
+        errorDetails.sqlState = sqlState || null;
+      }
+
+      throw new QueryError('Query could not be completed', errorMessage, errorDetails);
+    } finally {
+      if (!checkCache) await knexInstance.destroy();
+    }
   }
 
   async testConnection(sourceOptions: SourceOptions): Promise<ConnectionTestResult> {
     const knexInstance = await this.getConnection(sourceOptions, {}, false);
-    await knexInstance.raw('select @@version;');
+    await knexInstance.raw('select @@version;').timeout(this.STATEMENT_TIMEOUT);
     knexInstance.destroy();
-
-    return {
-      status: 'ok',
-    };
+    return { status: 'ok' };
   }
 
-  async buildConnection(sourceOptions: SourceOptions) {
-    // either use socket_path or host/port + ssl
-    const props = sourceOptions.socket_path
-      ? { socketPath: sourceOptions.socket_path }
-      : {
-          host: sourceOptions.host,
-          port: +sourceOptions.port,
-          ssl: sourceOptions.ssl_enabled ?? false, // Disabling by default for backward compatibility
-        };
-    const config: Knex.Config = {
-      client: 'mysql2',
-      connection: {
-        ...props,
-        user: sourceOptions.username,
-        password: sourceOptions.password,
-        database: sourceOptions.database,
-        multipleStatements: true,
-        ...(sourceOptions.ssl_enabled && { ssl: { rejectUnauthorized: false } }),
-      },
-    };
+  private async handleGuiQuery(knexInstance: Knex, queryOptions: QueryOptions): Promise<any> {
+    if (queryOptions.operation !== 'bulk_update_pkey') {
+      return { rows: [] };
+    }
 
-    return knex(config);
+    const query = this.buildBulkUpdateQuery(queryOptions);
+    return await this.executeQuery(knexInstance, query);
   }
+
+  private async handleRawQuery(knexInstance: Knex, queryOptions: QueryOptions): Promise<QueryResult> {
+    const { query, query_params } = queryOptions;
+    const queryParams = query_params || [];
+    const sanitizedQueryParams: Record<string, any> = Object.fromEntries(queryParams.filter(([key]) => !isEmpty(key)));
+    const result = await this.executeQuery(knexInstance, query, sanitizedQueryParams);
+
+    return { status: 'ok', data: result[0] };
+  }
+
+  private async executeQuery(knexInstance: Knex, query: string, sanitizedQueryParams: Record<string, any> = {}) {
+    if (isEmpty(query)) throw new Error('Query is empty');
+
+    const result = await knexInstance.raw(query, sanitizedQueryParams).timeout(this.STATEMENT_TIMEOUT);
+    return result;
+  }
+
+  private connectionOptions(sourceOptions: SourceOptions) {
+    const _connectionOptions = (sourceOptions?.connection_options || []).filter((o) => o.some((e) => !isEmpty(e)));
+    const connectionOptions = Object.fromEntries(_connectionOptions);
+    Object.keys(connectionOptions).forEach((key) =>
+      connectionOptions[key] === '' ? delete connectionOptions[key] : {}
+    );
+    return connectionOptions;
+  }
+
+  private async buildConnection(sourceOptions: SourceOptions): Promise<Knex> {
+  const props = sourceOptions.socket_path
+    ? { socketPath: sourceOptions.socket_path }
+    : {
+        host: sourceOptions.host,
+        port: +sourceOptions.port,
+      };
+
+    const shouldUseSSL = sourceOptions.ssl_enabled;
+    let sslObject: any = null;
+
+if (shouldUseSSL) {
+  sslObject = { rejectUnauthorized: (sourceOptions.ssl_certificate ?? 'none') !== 'none' };
+  
+  if (sourceOptions.ssl_certificate === 'ca_certificate') {
+    sslObject.ca = sourceOptions.ca_cert;
+  } else if (sourceOptions.ssl_certificate === 'self_signed') {
+    sslObject.ca = sourceOptions.root_cert;
+    sslObject.key = sourceOptions.client_key;
+    sslObject.cert = sourceOptions.client_cert;
+  }
+}
+
+  const config: Knex.Config = {
+    client: 'mysql2',
+    connection: {
+      ...props,
+      user: sourceOptions.username,
+      password: sourceOptions.password,
+      database: sourceOptions.database,
+      multipleStatements: true,
+      ...(shouldUseSSL ? { ssl: sslObject } : {}),
+    },
+    ...this.connectionOptions(sourceOptions),
+  };
+
+  return knex(config);
+}
 
   async getConnection(
     sourceOptions: SourceOptions,
@@ -95,28 +163,25 @@ export default class MysqlQueryService implements QueryService {
     checkCache: boolean,
     dataSourceId?: string,
     dataSourceUpdatedAt?: string
-  ): Promise<any> {
+  ): Promise<Knex> {
     if (checkCache) {
-      let connection = await getCachedConnection(dataSourceId, dataSourceUpdatedAt);
+      const optionsHash = generateSourceOptionsHash(sourceOptions);
+      const enhancedCacheKey = `${dataSourceId}_${optionsHash}`;
+      const cachedConnection = await getCachedConnection(enhancedCacheKey, dataSourceUpdatedAt);
+      if (cachedConnection) return cachedConnection;
 
-      if (connection) {
-        return connection;
-      } else {
-        connection = await this.buildConnection(sourceOptions);
-        dataSourceId && cacheConnection(dataSourceId, connection);
-        return connection;
-      }
-    } else {
-      return await this.buildConnection(sourceOptions);
+      const connection = await this.buildConnection(sourceOptions);
+      cacheConnectionWithConfiguration(dataSourceId, enhancedCacheKey, connection);
+      return connection;
     }
+
+    return await this.buildConnection(sourceOptions);
   }
 
-  async buildBulkUpdateQuery(queryOptions: any): Promise<string> {
+  buildBulkUpdateQuery(queryOptions: QueryOptions): string {
     let queryText = '';
 
-    const tableName = queryOptions['table'];
-    const primaryKey = queryOptions['primary_key_column'];
-    const records = queryOptions['records'];
+    const { table: tableName, primary_key_column: primaryKey, records } = queryOptions;
 
     for (const record of records) {
       const primaryKeyValue = typeof record[primaryKey] === 'string' ? `'${record[primaryKey]}'` : record[primaryKey];

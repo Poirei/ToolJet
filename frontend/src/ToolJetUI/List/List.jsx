@@ -9,7 +9,7 @@ import Edit from '@/_ui/Icon/bulkIcons/Edit';
 import { ButtonSolid } from '@/_ui/AppButton/AppButton';
 import MoreVertical from '@/_ui/Icon/solidIcons/MoreVertical';
 import SortableList from '@/_components/SortableList';
-import { DeprecatedColumnTooltip } from '@/Editor/Inspector/Components/Table/ColumnManager/DeprecatedColumnTypeMsg';
+import { DeprecatedColumnTooltip } from '@/AppBuilder/RightSideBar/Inspector/Components/Table/ColumnManager/DeprecatedColumnTypeMsg';
 import Icons from '@/_ui/Icon/solidIcons/index';
 
 function List({ children, ...restProps }) {
@@ -30,6 +30,7 @@ function ListItem({
   showCopyColumnOption = false,
   showVisibilityIcon = false,
   isColumnVisible = true,
+  showIconOnHover = false,
   columnType,
   isDeprecated,
   ...restProps
@@ -47,8 +48,8 @@ function ListItem({
         <div className="row">
           {(Icon || isDraggable) && (
             <div className="col-auto d-flex align-items-center">
-              {!isHovered && Icon && <Icon />}
               <SortableList.DragHandle show={isDraggable} />
+              <div className="draggable-icon-container">{(!isHovered || showIconOnHover) && Icon && <Icon />}</div>
             </div>
           )}
           <div

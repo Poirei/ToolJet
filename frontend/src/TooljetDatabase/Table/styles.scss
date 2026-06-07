@@ -15,14 +15,20 @@
 //   margin-right: 6px !important;
 // }
 
+.tj-database-column-header:hover {
+  .primaryKeyTooltip {
+    width: 88% !important;
+  }
+}
+
 .primaryKeyTooltip {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100% !important;
+  height: 100% !important;
 
   .table-header-container {
-    width: 140px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -51,6 +57,9 @@
     }
 
     &:last-child {
+      border-right: 0px;
+      border-color: inherit;
+
       &::before {
         content: '';
         position: absolute;
@@ -62,8 +71,6 @@
         background-color: rgba(101, 109, 119, 0.16) !important;
       }
 
-      border-right: 0px;
-      border-color: inherit;
     }
   }
 
@@ -90,8 +97,8 @@
     z-index: 1;
     position: sticky;
     left: 66px;
-    border-right: 2px solid var(--light-slate-08, #C1C8CD);
-    background-color: white;
+    border-right: 2px solid var(--border-weak);
+    background-color: var(--surfaces-surface-01);
   }
 
   th {
@@ -106,6 +113,10 @@
     }
 
     &:last-child {
+
+      border-right: 0px;
+      border-color: inherit;
+
       &::before {
         content: '';
         position: absolute;
@@ -116,9 +127,6 @@
         height: 100%;
         background-color: rgba(101, 109, 119, 0.16) !important;
       }
-
-      border-right: 0px;
-      border-color: inherit;
     }
   }
 
@@ -137,14 +145,14 @@
   th:nth-child(2) {
     z-index: 2;
     left: 66px;
-    border-right: 2px solid var(--light-slate-08, #C1C8CD);
+    border-right: 2px solid var(--border-weak);
   }
 
   .dark-background {
 
     td:nth-child(1),
     td:nth-child(2) {
-      background-color: #2B394A;
+      background-color: var(--surfaces-surface-01);
     }
   }
 
@@ -162,6 +170,21 @@
         width: 80%;
       }
     }
+
+    &:has(.tjdb-dashboard-codehinter-wrapper-cell) {
+      padding: 0 !important;
+    }
+
+    .tjdb-dashboard-codehinter-wrapper-cell {
+      .cm-editor {
+        border: 0 !important;
+      }
+
+      .codehinter-input.focused .cm-editor {
+        border: 0 !important;
+      }
+
+    }
   }
 
   .tjdb-selected-cell {
@@ -172,10 +195,10 @@
         padding-bottom: 0px !important;
 
         .cell-menu-text {
-          white-space: nowrap ;
-          overflow: hidden ;
-          text-overflow: ellipsis ;
-          width: 85% ;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          width: 85%;
           color: var(--slate11) !important;
           cursor: default;
           border-radius: 6px;
@@ -190,6 +213,7 @@
     .tjdb-td-wrapper {
       div {
         padding-bottom: 0px !important;
+
         .cell-menu-text {
           white-space: nowrap;
           overflow: hidden;
@@ -259,26 +283,6 @@
   background-color: #2B2F30 !important;
 }
 
-.empty-table-description {
-  font-size: 14px !important;
-  line-height: 20px !important;
-  margin-top: 5px !important;
-}
-
-.empty-table-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: calc(100% - 95px);
-}
-
-.tjdb-create-new-table {
-  width: 180px !important;
-  margin: 0px auto !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
 
 .keyPress-actions {
 
@@ -411,12 +415,24 @@
   .tjdb-th-bg-dark {
     background: #1C252F !important;
   }
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  &:hover::-webkit-scrollbar {
+    display: block;
+  }
 }
 
 .create-table-list-items {
   .popover-body {
     padding: 0px !important;
-    width: 240px !important;
+    min-width: 240px !important;
 
     .unique-constraint-parent {
       padding: 16px 16px 0px 16px !important;

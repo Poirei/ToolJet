@@ -28,6 +28,13 @@ const OpenApi = ({
   access_token_custom_headers,
   spec,
   workspaceConstants,
+  isDisabled,
+  multiple_auth_enabled,
+  currentAppEnvironmentId,
+  selectedDataSource,
+  isSaving,
+  optionsChanged,
+  audience,
 }) => {
   const [securities, setSecurities] = useState([]);
   const [loadingSpec, setLoadingSpec] = useState(false);
@@ -188,16 +195,19 @@ const OpenApi = ({
         onChange={(value) => optionchanged('format', value)}
         width={'100%'}
         useMenuPortal={false}
+        isDisabled={isDisabled}
       />
-      <div className="col-md-12">
-        <label className="form-label text-muted mt-3">Definition</label>
+      <div className="col-md-12" data-cy="definition-section">
+        <label className="form-label text-muted mt-3" data-cy="label-definition">Definition</label>
         <Textarea
+          data-cy="definition-input-field"
           placehlder="Enter spec definition"
           className="form-control"
           rows="14"
           value={definition}
           onChange={(e) => optionchanged('definition', e.target.value)}
           workspaceConstants={workspaceConstants}
+          disabled={isDisabled}
         />
       </div>
 
@@ -216,7 +226,7 @@ const OpenApi = ({
 
       {!loadingSpec && Array.isArray(securities) && securities.length > 0 && (
         <>
-          <div className="col-md-12">
+          <div className="col-md-12 mb-3">
             <label className="form-label text-muted mt-3">Authentication</label>
             <Select
               options={computeAuthOptions()}
@@ -224,6 +234,7 @@ const OpenApi = ({
               onChange={(value) => optionchanged('auth_key', value)}
               width={'100%'}
               useMenuPortal={false}
+              isDisabled={isDisabled}
             />
           </div>
 
@@ -247,6 +258,15 @@ const OpenApi = ({
             scopes={scopes}
             auth_url={auth_url}
             auth_type={auth_type}
+            multiple_auth_enabled={multiple_auth_enabled}
+            currentAppEnvironmentId={currentAppEnvironmentId}
+            selectedDataSource={selectedDataSource}
+            isDisabled={isDisabled}
+            isSaving={isSaving}
+            optionsChanged={optionsChanged}
+            securities={securities}
+            audience={audience}
+            workspaceConstants={workspaceConstants}
           />
         </>
       )}

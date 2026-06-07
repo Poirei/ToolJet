@@ -5,18 +5,17 @@ import OnBoardingInput from './OnBoardingInput';
 import OnBoardingRadioInput from './OnBoardingRadioInput';
 import ContinueButton from './ContinueButton';
 import OnBoardingBubbles from './OnBoardingBubbles';
+import AppLogo from '../_components/AppLogo';
 import { getuserName } from '@/_helpers/utils';
 import { retrieveWhiteLabelText } from '@white-label/whiteLabelling';
 import { redirectToDashboard } from '@/_helpers/routes';
 import { ON_BOARDING_SIZE, ON_BOARDING_ROLES } from '@/_helpers/constants';
-import LogoLightMode from '@assets/images/Logomark.svg';
-import LogoDarkMode from '@assets/images/Logomark-dark-mode.svg';
 import startsWith from 'lodash.startswith';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
+import posthogHelper from '@/modules/common/helpers/posthogHelper';
 
 function OnBoardingForm({ userDetails = {}, token = '', organizationToken = '', password, darkMode }) {
-  const Logo = darkMode ? LogoDarkMode : LogoLightMode;
   const [page, setPage] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,6 +56,15 @@ function OnBoardingForm({ userDetails = {}, token = '', organizationToken = '', 
           setIsLoading(false);
           redirectToDashboard(data);
           setCompleted(false);
+          const ssoType = localStorage.getItem('ph-sso-type');
+          const event = `onboarding_${
+            source === 'sso' ? (ssoType === 'google' ? 'google' : ssoType === 'openid' ? 'openid' : 'github') : 'email'
+          }`;
+          posthogHelper.initPosthog(data);
+          posthogHelper.captureEvent(event, {
+            email: data.email,
+            workspace_id: data.organization_id || data.current_organization_id,
+          });
         })
         .catch((res) => {
           setIsLoading(false);
@@ -83,7 +91,7 @@ function OnBoardingForm({ userDetails = {}, token = '', organizationToken = '', 
     <div className="flex">
       <div className="onboarding-navbar onboarding-navbar-layout">
         <div className="tooljet-nav-logo">
-          <Logo height="23" width="92" alt="tooljet logo" data-cy="page-logo" />
+          <AppLogo darkMode={darkMode} isLoadingFromHeader={true} className="onboard-tooljet-logo" />
         </div>
         <div></div>
         {/*Do not remove used for styling*/}

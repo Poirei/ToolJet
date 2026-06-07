@@ -1,5 +1,6 @@
 {
   "docs": [
+    "doc-home-page",
     {
       "type": "category",
       "label": "Getting Started",
@@ -43,7 +44,7 @@
         "setup/system-requirements",
         "setup/digitalocean",
         "setup/docker",
-        "setup/ec2",
+        "setup/ami",
         "setup/ecs",
         "setup/openshift",
         "setup/helm",
@@ -172,14 +173,15 @@
                             "widgets/table/serverside-operations/filter",
                             "widgets/table/serverside-operations/pagination"
                           ]
-                        }
+                        },
+                        "widgets/table/dynamic-column"
                       ]
                     },
                     "widgets/tabs",
                     "widgets/tags",
                     "widgets/text-input",
                     "widgets/text",
-                    "widgets/textarea",
+                    "widgets/text-area",
                     "widgets/rich-text-editor",
                     "widgets/timeline",
                     "widgets/timer",
@@ -191,15 +193,6 @@
                 {
                   "type": "category",
                   "label": "Actions Reference",
-                  "link": {
-                    "type": "generated-index",
-                    "title": "Actions Reference",
-                    "description": "All the actions that can be performed through event handlers",
-                    "keywords": [
-                      "actions",
-                      "events"
-                    ]
-                  },
                   "items": [
                     "actions/show-alert",
                     "actions/logout",
@@ -224,6 +217,7 @@
             }
           ]
         },
+        "app-builder/anti-patterns",
         "tutorial/keyboard-shortcuts"
       ]
     },
@@ -260,7 +254,8 @@
         "how-to/upload-files-gcs",
         "how-to/loading-image-pdf-from-db",
         "how-to/use-events-on-chart",
-        "how-to/print-multi-tabs-report"
+        "how-to/print-multi-tabs-report",
+        "how-to/display-listview-record-on-new-page"
       ]
     },
     {
@@ -278,7 +273,7 @@
             "data-sources/amazonses",
             "data-sources/appwrite",
             "data-sources/athena",
-            "data-sources/azureblob",
+            "data-sources/azureblobstorage",
             "data-sources/baserow",
             "data-sources/bigquery",
             "data-sources/firestore",
@@ -289,7 +284,7 @@
             "data-sources/dynamodb",
             "data-sources/elasticsearch",
             "data-sources/gcs",
-            "data-sources/google.sheets",
+            "data-sources/googlesheets",
             "data-sources/graphql",
             "data-sources/grpc",
             "data-sources/influxdb",
@@ -316,6 +311,7 @@
                 "data-sources/restapi/metadata-and-cookies"
               ]
             },
+            "data-sources/soap-api",
             "data-sources/rethinkdb",
             "data-sources/run-js",
             "data-sources/run-py",
@@ -431,7 +427,18 @@
       "type": "category",
       "label": "Release Management",
       "items": [
-        "gitsync",
+        {
+          "type": "category",
+          "label": "GitSync",
+          "items": [
+            "release-management/gitsync/overview",
+            "release-management/gitsync/tj-config",
+            "release-management/gitsync/ssh-config",
+            "release-management/gitsync/delete-gitsync",
+            "release-management/gitsync/git-push",
+            "release-management/gitsync/git-pull"
+          ]
+        },
         "release-management/multi-environment",
         "tutorial/versioning-and-release"
       ]
@@ -444,7 +451,15 @@
         "workflows/nodes",
         "workflows/workflow-triggers",
         "workflows/results",
-        "workflows/permissions"
+        "workflows/permissions",
+        {
+          "type": "category",
+          "label": "How-to",
+          "items": [
+            "workflows/trigger-using-webhook",
+            "workflows/trigger-workflow-from-app"
+          ]
+        }
       ]
     },
     {
@@ -457,7 +472,7 @@
           "type": "category",
           "label": "Marketplace Plugins",
           "items": [
-            "marketplace/plugins/marketplace-plugin-redshift",
+            "marketplace/plugins/marketplace-plugin-awsredshift",
             "marketplace/plugins/marketplace-plugin-textract",
             "marketplace/plugins/marketplace-plugin-aws-lambda",
             "marketplace/plugins/marketplace-plugin-engagespot",
@@ -469,7 +484,7 @@
             "marketplace/plugins/marketplace-plugin-supabase",
             "marketplace/plugins/marketplace-plugin-pocketbase",
             "marketplace/plugins/marketplace-plugin-portkey",
-            "marketplace/plugins/marketplace-plugin-prestodb",
+            "marketplace/plugins/marketplace-plugin-Presto",
             "marketplace/plugins/marketplace-plugin-jira",
             "marketplace/plugins/marketplace-plugin-sharepoint",
             "marketplace/plugins/marketplace-plugin-pinecone"

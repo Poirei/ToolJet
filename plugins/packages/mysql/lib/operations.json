@@ -3,7 +3,9 @@
   "title": "Mysql datasource",
   "description": "A schema defining Mysql datasource",
   "type": "database",
-  "defaults": {},
+  "defaults": {
+    "mode": "sql"
+  },
   "properties": {
     "mode": {
       "label": "",
@@ -19,7 +21,27 @@
           "name": "GUI mode",
           "value": "gui"
         }
-      ]
+      ],
+      "commonFields": {
+        "host": {
+          "label": "Host",
+          "placeholder": "Leave empty to use default",
+          "key": "host",
+          "type": "codehinter",
+          "description": "Enter host",
+          "height": "150px",
+          "shouldRenderTheProperty": "allow_dynamic_connection_parameters"
+        },
+        "database": {
+          "label": "Database",
+          "placeholder": "Leave empty to use default",
+          "key": "database",
+          "type": "codehinter",
+          "description": "Enter database name",
+          "height": "150px",
+          "shouldRenderTheProperty": "allow_dynamic_connection_parameters"
+        }
+      }
     },
     "sql": {
       "query": {
@@ -27,7 +49,16 @@
         "type": "codehinter",
         "description": "Enter query",
         "height": "150px",
-        "editorType": "multiline"
+        "editorType": "multiline",
+        "placeholder": "SELECT * FROM users"
+      },
+      "query_params": {
+        "key": "query_params",
+        "label": "SQL Parameters",
+        "type": "react-component-headers",
+        "description": "Parameters for the SQL query",
+        "buttonText": "Add SQL parameter",
+        "tooltip": "Use these parameters in the SQL query using name notation < :parameter_name >"
       }
     },
     "gui": {

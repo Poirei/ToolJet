@@ -28,6 +28,12 @@
   background-color: unset !important;
 }
 
+.page-group-wrapper{
+  button:focus:not(:focus-visible) {
+    outline: none !important;
+  }
+}
+
 button:focus:not(:focus-visible) {
   // outline: unset !important;
   outline: 1px solid rgba(255, 255, 255, 0.00) !important;
@@ -58,6 +64,7 @@ button:focus:not(:focus-visible) {
     padding: 10px 14px;
     cursor: pointer;
     display: flex;
+    align-items: center;
 
     &:hover {
       background-color: var(--slate3);
@@ -71,6 +78,10 @@ button:focus:not(:focus-visible) {
 
     .color-tomato9 {
       color: var(--tomato9)
+    }
+
+    .color-disabled {
+      color: var(--text-disabled);
     }
   }
 }

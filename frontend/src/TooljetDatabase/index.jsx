@@ -6,6 +6,8 @@ import { authenticationService } from '../_services/authentication.service';
 import { BreadCrumbContext } from '@/App/App';
 import { useNavigate } from 'react-router-dom';
 import { pageTitles, fetchAndSetWindowTitle } from '@white-label/whiteLabelling';
+import { hasBuilderRole } from '@/_helpers/utils';
+import './styles/styles.scss';
 
 export const TooljetDatabaseContext = createContext({
   organizationId: null,
@@ -41,7 +43,9 @@ export const TooljetDatabaseContext = createContext({
   setPageSize: () => {},
   handleRefetchQuery: () => {},
   foreignKeys: [],
+  configurations: {},
   setForeignKeys: () => [],
+  setConfigurations: () => {},
 });
 
 export const TooljetDatabase = (props) => {
@@ -62,7 +66,7 @@ export const TooljetDatabase = (props) => {
   const [queryFilters, setQueryFilters] = useState({});
   const [sortFilters, setSortFilters] = useState({});
   const [collapseSidebar, setCollapseSidebar] = useState(false);
-
+  const [configurations, setConfigurations] = useState({});
   const [foreignKeys, setForeignKeys] = useState([]);
 
   const toggleCollapsibleSidebar = () => {
@@ -70,11 +74,9 @@ export const TooljetDatabase = (props) => {
   };
   const navigate = useNavigate();
   const { admin } = authenticationService.currentSessionValue;
-  // let { state } = useLocation();
+  const isBuilder = hasBuilderRole(authenticationService?.currentSessionValue?.role ?? {});
 
-  // console.log('state', selectedTable);
-
-  if (!admin) {
+  if (!admin && !isBuilder) {
     navigate('/');
   }
 
@@ -93,6 +95,13 @@ export const TooljetDatabase = (props) => {
     setTotalRecords,
     setLoadingState,
   });
+
+  const getConfigurationProperty = (header, property, fallback) => {
+    const columnUuid = configurations?.columns?.column_names?.[header];
+    const columnConfig = configurations?.columns?.configurations?.[columnUuid] || {};
+    if (!columnConfig[property]) return fallback;
+    return columnConfig[property];
+  };
 
   const value = useMemo(
     () => ({
@@ -129,6 +138,9 @@ export const TooljetDatabase = (props) => {
       setLoadingState,
       foreignKeys,
       setForeignKeys,
+      configurations,
+      setConfigurations,
+      getConfigurationProperty,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -142,6 +154,7 @@ export const TooljetDatabase = (props) => {
       queryFilters,
       sortFilters,
       foreignKeys,
+      configurations,
     ]
   );
 

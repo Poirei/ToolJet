@@ -34,20 +34,21 @@ curl -LO https://tooljet-deployments.s3.us-west-1.amazonaws.com/kubernetes/GKE/d
 Make sure to edit the environment variables in the `deployment.yaml`. You can check out the available options [here](/docs/setup/env-vars).
 
 :::info
-        For the setup, ToolJet requires:
-        <ul> 
-        - **TOOLJET_DB** 
-        - **TOOLJET_DB_HOST**
-        - **TOOLJET_DB_USER**
-        - **TOOLJET_DB_PASS**
-        - **PG_HOST**
-        - **PG_DB**
-        - **PG_USER**
-        - **PG_PASS**
-        - **SECRET_KEY_BASE** 
-        - **LOCKBOX_KEY**
-        </ul>
-        Read **[environment variables reference](/docs/setup/env-vars)**
+For the setup, ToolJet requires:
+
+<ul> 
+   - **TOOLJET_DB** 
+   - **TOOLJET_DB_HOST** 
+   - **TOOLJET_DB_USER** 
+   - **TOOLJET_DB_PASS** 
+   - **PG_HOST** 
+   - **PG_DB** 
+   - **PG_USER** 
+   - **PG_PASS** 
+   - **SECRET_KEY_BASE** 
+   - **LOCKBOX_KEY**
+</ul>
+Read **[environment variables reference](/docs/setup/env-vars)**
 :::
 
 :::info
@@ -82,7 +83,11 @@ You will be able to access your ToolJet installation once the pods, service and 
 
 ## ToolJet Database
 
-To use ToolJet Database, you'd have to set up and deploy PostgREST server which helps querying ToolJet Database. Please [follow the instructions here](/docs/setup/env-vars/#enable-tooljet-database-required).
+To use the ToolJet Database, you need to set up and deploy a PostgREST server, which facilitates querying the database. Detailed setup instructions are available [here](/docs/tooljet-db/tooljet-database).
+
+Starting with ToolJet 3.0, deploying the ToolJet Database is mandatory to avoid migration issues. Refer to the documentation below for details on the new major version, including breaking changes and required adjustments for your applications.
+
+- [ToolJet 3.0 Migration Guide for Self-Hosted Versions](/docs/setup/upgrade-to-v3/)
 
 1. Setup PostgREST server
 
@@ -104,4 +109,4 @@ If this is a new installation of the application, you may start directly with th
 
 - Users on versions earlier than **v2.23.0-ee2.10.2** must first upgrade to this version before proceeding to the LTS version.
 
-*If you have any questions feel free to join our [Slack Community](https://tooljet.com/slack) or send us an email at hello@tooljet.com.*
+_If you have any questions feel free to join our [Slack Community](https://join.slack.com/t/tooljet/shared_invite/zt-2rk4w42t0-ZV_KJcWU9VL1BBEjnSHLCA) or send us an email at hello@tooljet.com._

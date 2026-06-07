@@ -40,6 +40,8 @@ services:
     platform: linux/x86_64
     depends_on:
       - postgres
+    env_file:
+      - .env
     volumes:
       - ./server:/app/server:delegated
       - ./plugins:/app/plugins
@@ -57,7 +59,7 @@ services:
     container_name: postgrest
     image: postgrest/postgrest:v12.0.2
     ports:
-      - "3001:3000"
+      - "3002:3002"
     env_file:
       - .env
     depends_on:
@@ -76,5 +78,22 @@ services:
       - POSTGRES_USER=${PG_USER}
       - POSTGRES_PASSWORD=${PG_PASS}
 
+  redis:
+    container_name: redis
+    image: redis:6.2
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    env_file:
+      - .env
+    environment:
+      - MASTER=redis
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
 volumes:
   postgres:
+  redis:

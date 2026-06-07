@@ -4,13 +4,26 @@ import { Breadcrumbs } from '../Breadcrumbs';
 import { useLocation } from 'react-router-dom';
 import { ButtonSolid } from '@/_ui/AppButton/AppButton';
 import { ToolTip } from '@/_components';
+import LicenseBanner from '@/modules/common/components/LicenseBanner';
+import { generateCypressDataCy } from '@/modules/common/helpers/cypressHelpers';
 
-function Header({ enableCollapsibleSidebar = false, collapseSidebar = false, toggleCollapsibleSidebar = () => {} }) {
-  const currentVersion = localStorage.getItem('currentVersion');
+function Header({
+  featureAccess,
+  enableCollapsibleSidebar = false,
+  collapseSidebar = false,
+  toggleCollapsibleSidebar = () => {},
+}) {
   const darkMode = localStorage.getItem('darkMode') === 'true';
 
-  const routes = (path) => {
-    switch (path) {
+  const routes = (pathEnd, path) => {
+    const pathParts = path.split('/');
+    if (pathParts.length > 1) {
+      const parentPath = pathParts[pathParts.length - 2];
+      if (['workspace-settings', 'settings'].includes(parentPath)) {
+        return parentPath === 'workspace-settings' ? 'Workspace settings' : 'Settings';
+      }
+    }
+    switch (pathEnd) {
       case 'workspaceId':
         return 'Applications';
       case 'database':
@@ -23,29 +36,57 @@ function Header({ enableCollapsibleSidebar = false, collapseSidebar = false, tog
         return 'Workspace settings';
       case 'data-sources':
         return 'Data sources';
-      case 'settings':
+      case 'profile-settings':
         return 'Profile settings';
-      case 'integrations':
+      case 'installed':
+      case 'marketplace':
         return 'Integrations';
+      case 'settings':
+        return 'Settings';
+      case 'audit-logs':
+        return 'Audit logs';
+      case 'workflows':
+        return 'Workflows';
       case 'workspace-constants':
         return 'Workspace constants';
+      case 'modules':
+        return 'Modules';
       default:
         return 'Applications';
     }
   };
-  const location = useLocation();
-  const pathname = routes(location?.pathname.split('/').pop());
 
+  const routesWithTags = (pathEnd) => {
+    switch (pathEnd) {
+      case 'Audit logs':
+        return 'auditLogs';
+      default:
+        return null;
+    }
+  };
+
+  const location = useLocation();
+  const pathname = routes(location?.pathname.split('/').pop(), location?.pathname);
   return (
     <header className="layout-header">
       <div className="row w-100 gx-0">
         {!collapseSidebar && (
           <div className="tj-dashboard-section-header" data-name={pathname}>
-            <div className="row">
-              <div className="col-9">
-                <p className="tj-text-md font-weight-500" data-cy="dashboard-section-header">
+            <div className="row tw-w-full">
+              <div className="col-9 d-flex">
+                <p className="tj-text-md font-weight-500 text-black-000" data-cy="dashboard-section-header">
                   {pathname}
                 </p>
+                {routesWithTags(pathname) && (
+                  <LicenseBanner
+                    classes="mb-3 small"
+                    isAvailable={false}
+                    showPaidFeatureBanner={
+                      !featureAccess[routesWithTags(pathname)] || featureAccess?.licenseStatus?.licenseType === 'trial'
+                    }
+                    size="small"
+                  />
+                )}
               </div>
               {enableCollapsibleSidebar && !collapseSidebar && (
                 <ToolTip message="Collapse sidebar" placement="bottom" delay={{ show: 0, hide: 100 }}>
@@ -69,7 +110,7 @@ function Header({ enableCollapsibleSidebar = false, collapseSidebar = false, tog
                       iconWidth="14"
                       size="md"
                       onClick={toggleCollapsibleSidebar}
-                    ></ButtonSolid>
+                    />
                   </div>
                 </ToolTip>
               )}
@@ -77,7 +118,7 @@ function Header({ enableCollapsibleSidebar = false, collapseSidebar = false, tog
           </div>
         )}
         <div className="col tj-dashboard-header-wrap">
-          <div className="d-flex justify-content-sm-between">
+          <div className="d-flex justify-content-sm-between tw-w-full">
             {enableCollapsibleSidebar && collapseSidebar && (
               <ToolTip message="Open sidebar" placement="bottom" delay={{ show: 0, hide: 100 }}>
                 <div className="pe-3">
@@ -100,21 +141,25 @@ function Header({ enableCollapsibleSidebar = false, collapseSidebar = false, tog
                     iconWidth="14"
                     size="md"
                     onClick={toggleCollapsibleSidebar}
-                  ></ButtonSolid>
+                  />
                 </div>
               </ToolTip>
             )}
-            <div className="app-header-label" data-cy="app-header-label">
+            <div
+              className="app-header-label tw-flex tw-items-center "
+              data-cy={generateCypressDataCy(`breadcrumb-header-${pathname}`)}
+            >
               <Breadcrumbs darkMode={darkMode} />
             </div>
             <div
-              className={cx('ms-auto tj-version tj-text-xsm', {
+              className={cx('tw-ml-auto tj-version tj-text-xsm tw-flex tw-items-center tw-gap-3', {
                 'color-muted-darkmode': darkMode,
                 'color-disabled': !darkMode,
               })}
-              data-cy="version-label"
             >
-              Version {currentVersion}
+              {Object.keys(featureAccess).length > 0 && (
+                <LicenseBanner limits={featureAccess} showNavBarActions={true} />
+              )}
             </div>
           </div>
         </div>

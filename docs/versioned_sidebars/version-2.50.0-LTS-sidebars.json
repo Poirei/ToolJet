@@ -1,5 +1,6 @@
 {
   "docs": [
+    "doc-home-page",
     {
       "type": "category",
       "label": "Getting Started",
@@ -43,7 +44,7 @@
         "setup/system-requirements",
         "setup/digitalocean",
         "setup/docker",
-        "setup/ec2",
+        "setup/ami",
         "setup/ecs",
         "setup/openshift",
         "setup/helm",
@@ -53,7 +54,6 @@
         "setup/kubernetes-eks",
         "setup/azure-container",
         "setup/google-cloud-run",
-        "setup/client",
         "setup/env-vars",
         "setup/http-proxy",
         "setup/tooljet-subpath",
@@ -157,7 +157,7 @@
                 "widgets/tags",
                 "widgets/text-input",
                 "widgets/text",
-                "widgets/textarea",
+                "widgets/text-area",
                 "widgets/rich-text-editor",
                 "widgets/timeline",
                 "widgets/timer",
@@ -169,15 +169,6 @@
             {
               "type": "category",
               "label": "Actions Reference",
-              "link": {
-                "type": "generated-index",
-                "title": "Actions Reference",
-                "description": "All the actions that can be performed through event handlers",
-                "keywords": [
-                  "actions",
-                  "events"
-                ]
-              },
               "items": [
                 "actions/show-alert",
                 "actions/logout",
@@ -254,7 +245,7 @@
             "data-sources/amazonses",
             "data-sources/appwrite",
             "data-sources/athena",
-            "data-sources/azureblob",
+            "data-sources/azureblobstorage",
             "data-sources/baserow",
             "data-sources/bigquery",
             "data-sources/firestore",
@@ -265,7 +256,7 @@
             "data-sources/dynamodb",
             "data-sources/elasticsearch",
             "data-sources/gcs",
-            "data-sources/google.sheets",
+            "data-sources/googlesheets",
             "data-sources/graphql",
             "data-sources/grpc",
             "data-sources/influxdb",
@@ -410,7 +401,7 @@
           "type": "category",
           "label": "Marketplace Plugins",
           "items": [
-            "marketplace/plugins/marketplace-plugin-redshift",
+            "marketplace/plugins/marketplace-plugin-awsredshift",
             "marketplace/plugins/marketplace-plugin-textract",
             "marketplace/plugins/marketplace-plugin-aws-lambda",
             "marketplace/plugins/marketplace-plugin-engagespot",
@@ -422,7 +413,7 @@
             "marketplace/plugins/marketplace-plugin-supabase",
             "marketplace/plugins/marketplace-plugin-pocketbase",
             "marketplace/plugins/marketplace-plugin-portkey",
-            "marketplace/plugins/marketplace-plugin-prestodb",
+            "marketplace/plugins/marketplace-plugin-Presto",
             "marketplace/plugins/marketplace-plugin-sharepoint"
           ]
         }

@@ -9,13 +9,6 @@ import {
   cancelModal,
 } from "Support/utils/common";
 
-export const login = () => {
-  cy.visit("/");
-  cy.clearAndType(commonSelectors.workEmailInputField, "dev@tooljet.io");
-  cy.clearAndType(commonSelectors.passwordInputField, "password");
-  cy.get(commonSelectors.loginButton).click();
-};
-
 export const modifyAndVerifyAppCardIcon = (appName) => {
   var random = function (obj) {
     var keys = Object.keys(obj);
@@ -60,6 +53,8 @@ export const modifyAndVerifyAppCardIcon = (appName) => {
 };
 
 export const verifyAppDelete = (appName) => {
+  cy.get("body").should("exist").and("be.visible");
+  cy.get('[data-cy="dashboard-section-header"]').should("be.visible");
   cy.get("body").then(($title) => {
     if (!$title.text().includes(commonText.introductionMessage)) {
       cy.clearAndType(commonSelectors.homePageSearchBar, appName);

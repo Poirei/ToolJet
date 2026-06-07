@@ -22,8 +22,9 @@ const ColumnsForm = ({
   createForeignKeyInEdit = false,
   selectedTable,
   setForeignKeys,
+  handleInputError,
 }) => {
-  const [columnSelection, setColumnSelection] = useState({ index: 0, value: '' });
+  const [columnSelection, setColumnSelection] = useState({ index: 0, value: '', configurations: {} });
   const [hoveredColumn, setHoveredColumn] = useState(null);
   const [isForeignKeyDraweOpen, setIsForeignKeyDraweOpen] = useState(false);
 
@@ -79,19 +80,21 @@ const ColumnsForm = ({
           })}
         >
           <div className="row">
-            <div className="m-0 d-flex align-items-center  column-name-description">
+            <div className="m-0 d-flex align-items-center column-name-description">
               <ColumnName />
               <span style={{ marginLeft: '6px' }} data-cy="name-input-field-label">
                 Column name
               </span>
             </div>
-            <div className="m-0 dataType-description">
-              <span data-cy="type-input-field-label">Type</span>
+            <div className="dataType-description">
+              <span style={{ marginLeft: '6px' }} data-cy="type-input-field-label">
+                Type
+              </span>
             </div>
-            <div className="m-0 defaultValue-description">
+            <div className="defaultValue-description">
               <span data-cy="default-input-field-label">Default value</span>
             </div>
-            <div className="m-0 primaryKey-description">
+            <div className="primaryKey-description">
               <span data-cy="default-input-field-label">Primary</span>
             </div>
           </div>
@@ -106,6 +109,7 @@ const ColumnsForm = ({
           setColumnSelection={setColumnSelection}
           handleDelete={handleDelete}
           isEditMode={isEditMode}
+          setForeignKeyDetails={setForeignKeyDetails}
           isActiveForeignKey={
             !isEmpty(foreignKeyDetails?.column_names) &&
             !isEmpty(foreignKeyDetails?.referenced_column_names) &&
@@ -116,6 +120,7 @@ const ColumnsForm = ({
           indexHover={hoveredColumn}
           foreignKeyDetails={foreignKeyDetails}
           existingForeignKeyDetails={existingForeignKeyDetails} // foreignKeys from context state
+          handleInputError={handleInputError}
         />
 
         <div className="d-flex mb-2 mt-2 border-none" style={{ maxHeight: '32px' }}>
@@ -124,8 +129,11 @@ const ColumnsForm = ({
             size="sm"
             style={{ fontSize: '14px' }}
             onClick={() => {
-              setColumns((prevColumns) => ({ ...prevColumns, [+Object.keys(prevColumns).pop() + 1 || 0]: {} })),
-                setColumnSelection({ index: 0, value: '' });
+              setColumns((prevColumns) => ({
+                ...prevColumns,
+                [+Object.keys(prevColumns).pop() + 1 || 0]: { configurations: {} },
+              })),
+                setColumnSelection({ index: 0, value: '', configurations: {} });
             }}
             data-cy="add-more-columns-button"
           >

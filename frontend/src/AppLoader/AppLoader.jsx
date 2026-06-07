@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { withTranslation } from 'react-i18next';
-import { Editor } from '../Editor/Editor';
-import { RealtimeEditor } from '@/Editor/RealtimeEditor';
-import config from 'config';
+import _ from 'lodash';
+import { resetAllStores } from '@/_stores/utils';
+import RenderWorkflow from '@/modules/RenderWorkflow';
+import RenderAppBuilder from './RenderAppBuilder';
 
-const AppLoaderComponent = React.memo((props) => {
-  return config.ENABLE_MULTIPLAYER_EDITING ? <RealtimeEditor {...props} /> : <Editor {...props} />;
-});
+const AppLoader = (props) => {
+  const { type: appType } = props;
 
-export const AppLoader = withTranslation()(AppLoaderComponent);
+  useLayoutEffect(() => {
+    resetAllStores();
+  }, []);
+
+  switch (appType) {
+    case 'front-end':
+      return <RenderAppBuilder appType="front-end" {...props} />;
+    case 'workflow':
+      return <RenderWorkflow {...props} />;
+    case 'module':
+      return <RenderAppBuilder appType="module" {...props} />;
+  }
+};
+
+export default withTranslation()(AppLoader);

@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { AppVersion } from '../src/entities/app_version.entity';
+import { AppVersion } from '@entities/app_version.entity';
 
 export class RebaseWidgetWidthAndLeftOffsetForResponsiveCanvas1636372753632 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -32,7 +32,6 @@ export class RebaseWidgetWidthAndLeftOffsetForResponsiveCanvas1636372753632 impl
             let containerWidth = 1292;
             if (layoutIndex === 'mobile') containerWidth = 450;
             if (component.parent) {
-              console.log('component is', component);
               const parentComponentCandidates: any = Object.entries(components).filter(
                 (entry) => entry[0] === component.parent
               );

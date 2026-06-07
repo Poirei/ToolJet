@@ -1,29 +1,30 @@
 import React from 'react';
-import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 import { SortableItem } from './components';
-import { useAppVersionStore } from '@/_stores/appVersionStore';
-import { shallow } from 'zustand/shallow';
+import useStore from '@/AppBuilder/_stores/store';
 
 export function SortableList({ items, onChange, renderItem }) {
   const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 250,
+        distance: 10,
+      },
     })
+    // useSensor(KeyboardSensor, {
+    //   coordinateGetter: sortableKeyboardCoordinates,
+    // })
   );
-  const { enableReleasedVersionPopupState, isVersionReleased } = useAppVersionStore(
-    (state) => ({
-      enableReleasedVersionPopupState: state.actions.enableReleasedVersionPopupState,
-      isVersionReleased: state.isVersionReleased,
-    }),
-    shallow
-  );
+
+  const shouldFreeze = useStore((state) => state.isVersionReleased || state.isEditorFreezed);
+  const enableReleasedVersionPopupState = useStore((state) => state.enableReleasedVersionPopupState);
+
   return (
     <DndContext
       sensors={sensors}
       onDragEnd={({ active, over }) => {
-        if (isVersionReleased) {
+        if (shouldFreeze) {
           enableReleasedVersionPopupState();
           return;
         }
@@ -36,7 +37,7 @@ export function SortableList({ items, onChange, renderItem }) {
       }}
     >
       <SortableContext items={items}>
-        {items.map((item) => (
+        {items?.map((item) => (
           <React.Fragment key={item.id}>{renderItem(item)}</React.Fragment>
         ))}
       </SortableContext>

@@ -48,6 +48,7 @@ function buildConnectionOptions(data): TypeOrmModuleOptions {
     extra: {
       max: 25,
     },
+    maxQueryExecutionTime: data.SLOW_QUERY_LOGGING_THRESHOLD || (data.DISABLE_CUSTOM_QUERY_LOGGING === 'true' ? 30 : 1), // Set 1ms to log all queries by default with execution time. Set 30ms in case custom query logging is disabled
     ...dbSslConfig(data),
   };
 
@@ -64,10 +65,6 @@ function buildConnectionOptions(data): TypeOrmModuleOptions {
     migrationsTransactionMode: 'all',
     logging: data.ORM_LOGGING || false,
     migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
-    keepConnectionAlive: true,
-    cli: {
-      migrationsDir: 'migrations',
-    },
   };
 }
 
@@ -82,6 +79,7 @@ function buildToolJetDbConnectionOptions(data): TypeOrmModuleOptions {
     logging: data.ORM_LOGGING || false,
     extra: {
       max: 25,
+      statement_timeout: data.TOOLJET_DB_STATEMENT_TIMEOUT || 60000,
     },
     ...tooljetDbSslConfig(data),
   };
@@ -95,7 +93,6 @@ function buildToolJetDbConnectionOptions(data): TypeOrmModuleOptions {
     migrationsRun: false,
     migrationsTransactionMode: 'all',
     logging: data.ORM_LOGGING || false,
-    keepConnectionAlive: true,
   };
 }
 

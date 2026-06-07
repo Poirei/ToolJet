@@ -20,6 +20,8 @@ import {
   determineJustifyContentValue,
   resolveWidgetFieldValue,
 } from '@/_helpers/utils';
+import useStore from '@/AppBuilder/_stores/store';
+import { shallow } from 'zustand/shallow';
 import { useExportData } from 'react-table-plugins';
 import Papa from 'papaparse';
 import { Pagination } from './Pagination';
@@ -107,7 +109,6 @@ export function Table({
   // events,
   setProperty,
   mode,
-  exposedVariables,
 }) {
   const {
     color,
@@ -150,8 +151,10 @@ export function Table({
     isMaxRowHeightAuto,
     columnHeaderWrap,
   } = loadPropertiesAndStyles(properties, styles, darkMode, component);
+  const exposedVariables = useStore((state) => state.getExposedValueOfComponent(id), shallow);
   const updatedDataReference = useRef([]);
   const preSelectRow = useRef(false);
+  const initialPageCountRef = useRef(null);
   const { events: allAppEvents } = useAppInfo();
 
   const tableEvents = allAppEvents.filter((event) => event.target === 'component' && event.sourceId === id);
@@ -187,6 +190,7 @@ export function Table({
   const [hoverAdded, setHoverAdded] = useState(false);
   const [generatedColumn, setGeneratedColumn] = useState([]);
   const [isCellValueChanged, setIsCellValueChanged] = useState(false);
+  const [tableButtonHoveredId, setTableButtonHoveredId] = useState('');
 
   const mergeToTableDetails = (payload) => dispatch(reducerActions.mergeToTableDetails(payload));
   const mergeToFilterDetails = (payload) => dispatch(reducerActions.mergeToFilterDetails(payload));
@@ -424,11 +428,15 @@ export function Table({
     }
   }
 
-  tableData = tableData || [];
+  tableData = _.isArray(tableData) ? tableData : [];
 
   const tableRef = useRef();
 
-  const columnProperties = useDynamicColumn ? generatedColumn : component.definition.properties.columns.value;
+  const removeNullValues = (arr) => arr.filter((element) => element !== null);
+
+  const columnProperties = useDynamicColumn
+    ? generatedColumn
+    : removeNullValues(component.definition.properties.columns.value);
 
   let columnData = generateColumnsData({
     columnProperties,
@@ -479,7 +487,7 @@ export function Table({
           // Single-level nested property
           const [nestedKey, subKey] = nestedKeys;
           const nestedObject = transformedObject?.[nestedKey] || { ...row[nestedKey] }; // Retain existing nested object
-          const newValue = resolveReferences(transformation, row[key], {
+          const newValue = resolveReferences(transformation, undefined, row[key], {
             cellValue: row?.[nestedKey]?.[subKey],
             rowData: row,
           });
@@ -491,7 +499,7 @@ export function Table({
           transformedObject[nestedKey] = nestedObject;
         } else {
           // Non-nested property
-          transformedObject[key] = resolveReferences(transformation, row[key], {
+          transformedObject[key] = resolveReferences(transformation, undefined, row[key], {
             cellValue: row[key],
             rowData: row,
           });
@@ -571,6 +579,8 @@ export function Table({
       highlightSelectedRow,
       JSON.stringify(tableActionEvents),
       JSON.stringify(tableColumnEvents),
+      maxRowHeightValue,
+      isMaxRowHeightAuto,
     ] // Hack: need to fix
   );
 
@@ -657,8 +667,8 @@ export function Table({
       data,
       defaultColumn,
       initialState: { pageIndex: 0, pageSize: 1 },
-      pageCount: -1,
-      manualPagination: false,
+      pageCount: initialPageCountRef.current,
+      manualPagination: serverSidePagination,
       getExportFileBlob,
       getExportFileName,
       disableSortBy: !enabledSort,
@@ -867,6 +877,15 @@ export function Table({
   }, [clientSidePagination, serverSidePagination, rows, rowsPerPage]);
 
   useEffect(() => {
+    if (!initialPageCountRef.current && serverSidePagination && data?.length && totalRecords) {
+      initialPageCountRef.current = Math.ceil(totalRecords / data?.length);
+    }
+    if (!serverSidePagination) {
+      initialPageCountRef.current = Math.ceil(data?.length / rowsPerPage);
+    }
+  }, [serverSidePagination, totalRecords, data?.length, rowsPerPage]);
+
+  useEffect(() => {
     const pageData = page.map((row) => row.original);
     if (preSelectRow.current) {
       preSelectRow.current = false;
@@ -1032,7 +1051,11 @@ export function Table({
     return (
       <Popover
         className={`${darkMode && 'dark-theme'}`}
-        style={{ maxHeight: `${heightOfTableComponent - 79}px`, overflowY: 'auto' }}
+        style={{
+          maxHeight: `${heightOfTableComponent - 79}px`,
+          overflowY: 'auto',
+          backgroundColor: 'var(--cc-surface1-surface)',
+        }}
       >
         <div
           data-cy={`dropdown-hide-column`}
@@ -1102,6 +1125,12 @@ export function Table({
       }}
       onClick={(event) => {
         onComponentClick(id, component, event);
+      }}
+      onMouseEnter={(event) => {
+        setTableButtonHoveredId(id);
+      }}
+      onMouseLeave={(event) => {
+        setTableButtonHoveredId('');
       }}
       ref={tableRef}
     >
@@ -1759,7 +1788,7 @@ export function Table({
                   serverSide={serverSidePagination}
                   autoGotoPage={gotoPage}
                   autoCanNextPage={canNextPage}
-                  autoPageCount={pageCount}
+                  autoPageCount={initialPageCountRef.current}
                   autoPageOptions={pageOptions}
                   onPageIndexChanged={onPageIndexChanged}
                   pageIndex={paginationInternalPageIndex}
@@ -1780,7 +1809,7 @@ export function Table({
               )}
               {!loadingState && showAddNewRowButton && (
                 <>
-                  <Tooltip id="tooltip-for-add-new-row" className="tooltip" />
+                  <Tooltip id={`tooltip-for-add-new-row-${id}`} className="tooltip" />
                   <ButtonSolid
                     variant="ghostBlack"
                     fill={`var(--icons-default)`}
@@ -1796,14 +1825,14 @@ export function Table({
                       }
                     }}
                     size="md"
-                    data-tooltip-id="tooltip-for-add-new-row"
+                    data-tooltip-id={tableButtonHoveredId === id ? `tooltip-for-add-new-row-${id}` : ''}
                     data-tooltip-content="Add new row"
                   ></ButtonSolid>
                 </>
               )}
               {!loadingState && showDownloadButton && (
                 <div>
-                  <Tooltip id="tooltip-for-download" className="tooltip" />
+                  <Tooltip id={`tooltip-for-download-${id}`} className="tooltip" />
                   <OverlayTriggerComponent
                     trigger="click"
                     overlay={downlaodPopover()}
@@ -1820,7 +1849,7 @@ export function Table({
                       fill={`var(--icons-default)`}
                       iconWidth="16"
                       size="md"
-                      data-tooltip-id="tooltip-for-download"
+                      data-tooltip-id={tableButtonHoveredId === id ? `tooltip-for-download-${id}` : ''}
                       data-tooltip-content="Download"
                       onClick={(e) => {
                         if (document.activeElement === e.currentTarget) {
@@ -1833,7 +1862,7 @@ export function Table({
               )}
               {!loadingState && !hideColumnSelectorButton && (
                 <>
-                  <Tooltip id="tooltip-for-manage-columns" className="tooltip" />
+                  <Tooltip id={`tooltip-for-manage-columns-${id}`} className="tooltip" />
                   <OverlayTriggerComponent
                     trigger="click"
                     rootClose={true}
@@ -1854,7 +1883,7 @@ export function Table({
                           e.currentTarget.blur();
                         }
                       }}
-                      data-tooltip-id="tooltip-for-manage-columns"
+                      data-tooltip-id={tableButtonHoveredId === id ? `tooltip-for-manage-columns-${id}` : ''}
                       data-tooltip-content="Manage columns"
                     ></ButtonSolid>
                   </OverlayTriggerComponent>

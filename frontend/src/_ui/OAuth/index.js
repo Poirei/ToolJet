@@ -11,6 +11,7 @@ const OAuth = ({
   access_token_custom_headers,
   client_id,
   client_secret,
+  audience,
   client_auth,
   custom_auth_params,
   custom_query_params,
@@ -26,10 +27,13 @@ const OAuth = ({
   multiple_auth_enabled,
   optionchanged,
   workspaceConstants,
+  isDisabled,
   options,
   optionsChanged,
   selectedDataSource,
+  oauth_configs,
 }) => {
+  const { allowed_auth_types } = oauth_configs || {};
   const authOptions = (isGrpc = false) => {
     const options = [
       { name: 'None', value: 'none' },
@@ -45,6 +49,9 @@ const OAuth = ({
       options.push({ name: 'API Key', value: 'api_key' });
     }
 
+    if (allowed_auth_types && allowed_auth_types.length > 0) {
+      return options.filter((option) => allowed_auth_types.includes(option.value));
+    }
     return options;
   };
 
@@ -52,13 +59,20 @@ const OAuth = ({
 
   return (
     <>
-      <Select
-        options={authOptions(isGrpc)}
-        value={auth_type}
-        onChange={(value) => optionchanged('auth_type', value)}
-        width={'100%'}
-        useMenuPortal={false}
-      />
+      {authOptions(isGrpc).length > 1 && (
+        <>
+          <label className="form-label" data-cy="authentication-type-dropdown-label">Authentication type</label>
+          <Select
+            options={authOptions(isGrpc)}
+            value={auth_type}
+            onChange={(value) => optionchanged('auth_type', value)}
+            width={'100%'}
+            useMenuPortal={false}
+            isDisabled={isDisabled}
+            dataCy="authentication-type"
+          />
+        </>
+      )}
       <ElementToRender
         add_token_to={add_token_to}
         header_prefix={header_prefix}
@@ -70,6 +84,7 @@ const OAuth = ({
         custom_auth_params={custom_auth_params}
         custom_query_params={custom_query_params}
         client_id={client_id}
+        audience={audience}
         client_secret={client_secret}
         client_auth={client_auth}
         multiple_auth_enabled={multiple_auth_enabled}
@@ -84,6 +99,7 @@ const OAuth = ({
         options={options}
         optionsChanged={optionsChanged}
         selectedDataSource={selectedDataSource}
+        oauth_configs={oauth_configs}
       />
     </>
   );

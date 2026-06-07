@@ -2,6 +2,7 @@ import { buttonConfig } from './button';
 import { tableConfig } from './table';
 import { chartConfig } from './chart';
 import { modalConfig } from './modal';
+import { modalV2Config } from './modalV2';
 import { formConfig } from './form';
 import { textinputConfig } from './textinput';
 import { numberinputConfig } from './numberinput';
@@ -9,6 +10,7 @@ import { passinputConfig } from './passwordinput';
 import { datepickerConfig } from './datepicker';
 import { checkboxConfig } from './checkbox';
 import { radiobuttonConfig } from './radiobutton';
+import { radiobuttonV2Config } from './radioButtonV2';
 import { toggleswitchConfig } from './toggleswitch';
 import { toggleSwitchV2Config } from './toggleswitchv2';
 import { textareaConfig } from './textarea';
@@ -17,7 +19,9 @@ import { textConfig } from './text';
 import { imageConfig } from './image';
 import { containerConfig } from './container';
 import { dropdownConfig } from './dropdown';
+import { dropdownV2Config } from './dropdownV2';
 import { multiselectConfig } from './multiselect';
+import { multiselectV2Config } from './multiselectV2';
 import { richtextareaConfig } from './richtextarea';
 import { mapConfig } from './map';
 import { qrscannerConfig } from './qrscanner';
@@ -43,7 +47,7 @@ import { verticalDividerConfig } from './verticalDivider';
 import { customComponentConfig } from './customComponent';
 import { buttonGroupConfig } from './buttonGroup';
 import { pdfConfig } from './pdf';
-import { stepsConfig } from './steps';
+// import { stepsConfig } from './steps';
 import { kanbanConfig } from './kanban';
 import { colorPickerConfig } from './colorPicker';
 import { treeSelectConfig } from './treeSelect';
@@ -51,19 +55,22 @@ import { linkConfig } from './link';
 import { iconConfig } from './icon';
 import { boundedBoxConfig } from './boundedBox';
 import { kanbanBoardConfig } from './kanbanBoard';
+import { chatConfig } from './chat';
 
 export {
   buttonConfig,
   tableConfig,
   chartConfig,
-  modalConfig,
+  modalConfig, //!Depreciated
+  modalV2Config,
   formConfig,
   textinputConfig,
   numberinputConfig,
   passinputConfig,
   datepickerConfig,
   checkboxConfig,
-  radiobuttonConfig,
+  radiobuttonConfig, //!Depreciated
+  radiobuttonV2Config,
   toggleswitchConfig, //!Depreciated
   toggleSwitchV2Config,
   textareaConfig,
@@ -71,8 +78,10 @@ export {
   textConfig,
   imageConfig,
   containerConfig,
-  dropdownConfig,
+  dropdownConfig, //!Depreciated
+  dropdownV2Config,
   multiselectConfig,
+  multiselectV2Config, //!Depreciated
   richtextareaConfig,
   mapConfig,
   qrscannerConfig,
@@ -98,7 +107,7 @@ export {
   customComponentConfig,
   buttonGroupConfig,
   pdfConfig,
-  stepsConfig,
+  // stepsConfig,
   kanbanConfig,
   kanbanBoardConfig, //!Depreciated
   colorPickerConfig,
@@ -106,4 +115,5 @@ export {
   linkConfig,
   iconConfig,
   boundedBoxConfig,
+  chatConfig,
 };

@@ -12,7 +12,7 @@ import { Col, Container, Row } from 'react-bootstrap';
 import { useDataQueriesActions } from '@/_stores/dataQueriesStore';
 import { useQueryPanelActions } from '@/_stores/queryPanelStore';
 import { Tooltip } from 'react-tooltip';
-import { authenticationService } from '@/_services';
+import { canCreateDataSource } from '@/_helpers';
 import SolidIcon from '@/_ui/Icon/SolidIcons';
 import '../queryManager.theme.scss';
 
@@ -23,7 +23,6 @@ function DataSourcePicker({ dataSources, sampleDataSource, staticDataSources, da
   const navigate = useNavigate();
   const { createDataQuery } = useDataQueriesActions();
   const { setPreviewData } = useQueryPanelActions();
-  const { admin } = authenticationService.currentSessionValue;
 
   const docLink = 'sampledb.com';
 
@@ -51,6 +50,7 @@ function DataSourcePicker({ dataSources, sampleDataSource, staticDataSources, da
     navigate(`/${workspaceId}/data-sources`);
   };
 
+
   return (
     <>
       <h4 className="w-100 text-center" data-cy={'label-select-datasource'} style={{ fontWeight: 500 }}>
@@ -62,7 +62,7 @@ function DataSourcePicker({ dataSources, sampleDataSource, staticDataSources, da
         <a
           data-cy="querymanager-doc-link"
           target="_blank"
-          href="https://docs.tooljet.com/docs/app-builder/query-panel"
+          href="https://docs.tooljet.ai/docs/app-builder/query-panel"
           rel="noreferrer"
         >
           documentation
@@ -138,7 +138,7 @@ function DataSourcePicker({ dataSources, sampleDataSource, staticDataSources, da
           <label className="form-label py-1" style={{ width: 'auto' }} data-cy={`label-avilable-ds`}>
             {`Available Data sources ${!isEmpty(allUserDefinedSources) ? '(' + allUserDefinedSources.length + ')' : 0}`}
           </label>
-          {admin && (
+          {canCreateDataSource() && (
             <ButtonSolid
               size="sm"
               variant="ghostBlue"

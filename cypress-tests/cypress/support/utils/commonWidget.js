@@ -31,10 +31,11 @@ export const verifyAndModifyParameter = (paramName, value) => {
 export const openEditorSidebar = (widgetName = "") => {
   cy.hideTooltip();
 
-  cy.get(`${commonWidgetSelector.draggableWidget(widgetName)}:eq(0)`).trigger(
-    "mouseover"
-  );
-  cy.get(commonWidgetSelector.widgetConfigHandle(widgetName)).click();
+
+  cy.get(`${commonWidgetSelector.draggableWidget(widgetName)}:eq(0)`).realHover().then(() => {
+    cy.wait(1000);
+    cy.get(commonWidgetSelector.widgetConfigHandle(widgetName)).click();
+  })
 };
 
 export const verifyAndModifyToggleFx = (
@@ -195,8 +196,7 @@ export const verifyBoxShadowCss = (
   ).should(
     "have.css",
     "box-shadow",
-    `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 100}) ${
-      shadowParam[0]
+    `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 100}) ${shadowParam[0]
     }px ${shadowParam[1]}px ${shadowParam[2]}px ${shadowParam[3]}px`
   );
 };
@@ -285,8 +285,7 @@ export const verifyLoaderColor = (widgetName, color) => {
     .then((style) => {
       const loaderColor = style.split(" ").join("");
       expect(loaderColor).to.include(
-        `--loader-color:rgba(${color[0]},${color[1]},${color[2]},${
-          color[3] / 100
+        `--loader-color:rgba(${color[0]},${color[1]},${color[2]},${color[3] / 100
         })`
       );
     });

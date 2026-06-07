@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { ExecFileSyncOptions, execFileSync } from 'child_process';
 import { buildAndValidateDatabaseConfig } from './database-config-utils';
 import { isEmpty } from 'lodash';
+import { populateSampleData } from './populate-sample-db';
 async function createDatabaseFromFile(envPath: string): Promise<void> {
   const result = dotenv.config({ path: envPath });
 
@@ -37,9 +38,9 @@ async function createDatabase(): Promise<void> {
     await createDb(envVars, dbNameFromArg);
   } else {
     await createDb(envVars, envVars.PG_DB);
-    if (process.env.ENABLE_TOOLJET_DB === 'true') {
-      await createTooljetDb(envVars, envVars.TOOLJET_DB);
-    }
+    await createTooljetDb(envVars, envVars.TOOLJET_DB);
+    createSampleDb(envVars, envVars.SAMPLE_DB);
+    populateSampleData(envVars);
   }
 }
 
@@ -47,7 +48,7 @@ function checkCommandAvailable(command: string) {
   try {
     const options = { env: process.env } as ExecFileSyncOptions;
     execFileSync('which', [command], options);
-  } catch (error) {
+  } catch {
     throw `Error: ${command} not found. Make sure it's installed and available in the system's PATH.`;
   }
 }
@@ -81,6 +82,9 @@ async function createTooljetDb(envVars, dbName): Promise<void> {
   if (isEmpty(dbName)) {
     throw new Error('Database name cannot be empty');
   }
+
+  if (envVars.PG_DB === dbName)
+    throw new Error(`The name of the App database and the ToolJet database must not be identical.`);
 
   try {
     executeCreateDb(

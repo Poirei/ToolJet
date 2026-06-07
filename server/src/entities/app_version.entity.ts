@@ -10,11 +10,18 @@ import {
   Unique,
   OneToMany,
 } from 'typeorm';
+
+export enum AppVersionStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  RELEASED = 'RELEASED',
+}
 import { App } from './app.entity';
 import { DataQuery } from './data_query.entity';
 import { DataSource } from './data_source.entity';
 import { Page } from './page.entity';
 import { EventHandler } from './event_handler.entity';
+import { WorkflowSchedule } from './workflow_schedule.entity';
 
 @Entity({ name: 'app_versions' })
 @Unique(['name', 'appId'])
@@ -31,6 +38,9 @@ export class AppVersion extends BaseEntity {
   @Column('simple-json', { name: 'global_settings' })
   globalSettings;
 
+  @Column('simple-json', { name: 'page_settings' })
+  pageSettings;
+
   @Column({ name: 'show_viewer_navigation' })
   showViewerNavigation: boolean;
 
@@ -42,6 +52,30 @@ export class AppVersion extends BaseEntity {
 
   @Column({ name: 'current_environment_id' })
   currentEnvironmentId: string;
+
+  @Column({ name: 'promoted_from' })
+  promotedFrom: string;
+
+  @Column({ name: 'parent_version_id', type: 'uuid', nullable: true })
+  parentVersionId: string;
+
+  @Column({
+    name: 'status',
+    type: 'enum',
+    enum: AppVersionStatus,
+    enumName: 'version_status_enum',
+    nullable: true,
+  })
+  status: AppVersionStatus;
+
+  @Column({ name: 'description', type: 'varchar', length: 500, nullable: true })
+  description: string;
+
+  @Column({ name: 'published_at', type: 'timestamp', nullable: true })
+  publishedAt: Date;
+
+  @Column({ name: 'released_at', type: 'timestamp', nullable: true })
+  releasedAt: Date;
 
   @CreateDateColumn({ default: () => 'now()', name: 'created_at' })
   createdAt: Date;
@@ -66,4 +100,11 @@ export class AppVersion extends BaseEntity {
     onDelete: 'CASCADE',
   })
   eventHandlers: EventHandler[];
+
+  @OneToMany(() => WorkflowSchedule, (workflowSchedule) => workflowSchedule.workflow, {
+    onDelete: 'CASCADE',
+  })
+  schedules: WorkflowSchedule[];
+
+  isCurrentEditingVersion: boolean;
 }

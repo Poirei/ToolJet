@@ -95,6 +95,28 @@ function CustomMenuList({ ...props }) {
           </div>
         </>
       )}
+      {/* Below part is hack for now to show description for aggregate function dropdown */}
+      {!tjdbMenuListProps.foreignKeyAccess && !tjdbMenuListProps.actions && tjdbMenuListProps.showDescription && (
+        <>
+          <div style={{ borderTop: '1px solid var(--slate5)' }}></div>
+          <div
+            style={{
+              height: 'fit-content',
+              padding: '8px 12px',
+              minHeight: '76px',
+            }}
+          >
+            <div className="tj-header-h8 tj-text">
+              {!isEmpty(focusedOption) ? focusedOption?.label : selectedOption?.label || ''}
+            </div>
+            <span className="tj-text-xsm" style={{ color: 'var(--slate9)' }}>
+              {!isEmpty(focusedOption)
+                ? focusedOption?.description
+                : selectedOption?.description || 'Select an option to view its description'}
+            </span>
+          </div>
+        </>
+      )}
     </React.Fragment>
   );
 }
@@ -154,6 +176,7 @@ function DataSourceSelect({
   isLoading = false,
   columnDefaultValue,
   setColumnDefaultValue,
+  showControlComponent = false,
 }) {
   const [isLoadingFKDetails, setIsLoadingFKDetails] = useState(isLoading);
   const [searchValue, setSearchValue] = useState('');
@@ -174,10 +197,10 @@ function DataSourceSelect({
     closePopup && !isMulti && closePopup();
   };
 
-  let optionsCount = options.length;
+  let optionsCount = options?.length;
 
-  options.forEach((item) => {
-    if (item.options && item.options.length > 0) {
+  options?.forEach((item) => {
+    if (item?.options && item?.options?.length > 0) {
       optionsCount += item.options.length;
     }
   });
@@ -197,7 +220,9 @@ function DataSourceSelect({
     if (isFirstPageLoaded && offset >= totalRecords) return;
     if (foreignKeys.length < 1) return;
     setIsLoadingFKDetails(true);
-    const referencedColumns = foreignKeys.find((item) => item.column_names[0] === cellColumnName);
+    const referencedColumns = Array.isArray(foreignKeys)
+      ? foreignKeys.find((item) => item.column_names[0] === cellColumnName)
+      : undefined;
     if (!referencedColumns?.referenced_column_names?.length) return;
 
     const selectQuery = new PostgrestQueryBuilder();
@@ -421,7 +446,12 @@ function DataSourceSelect({
                   message={`Foreign key relation cannot be created for ${props?.data?.dataType} type column`}
                   placement="top"
                   tooltipClassName="tootip-table"
-                  show={(foreignKeyAccess && props.data.dataType === 'serial') || props.data.dataType === 'boolean'}
+                  show={
+                    (foreignKeyAccess && props.data.dataType === 'serial') ||
+                    props.data.dataType === 'boolean' ||
+                    props.data.dataType === 'timestamp with time zone' ||
+                    props.data.dataType === 'jsonb'
+                  }
                 >
                   <div
                     style={{
@@ -492,7 +522,6 @@ function DataSourceSelect({
                         {children}
                       </span>
                     </ToolTip>
-
                     {foreignKeyAccess && showRedirection && props.isFocused && (
                       <Maximize
                         width={16}
@@ -510,7 +539,9 @@ function DataSourceSelect({
                         }}
                       />
                     )}
-                    {props.isSelected && highlightSelected && (
+                    <div
+                      style={{ visibility: !isMulti && props.isSelected && highlightSelected ? 'visible' : 'hidden' }}
+                    >
                       <SolidIcon
                         fill="var(--indigo9)"
                         name="tick"
@@ -518,7 +549,7 @@ function DataSourceSelect({
                         viewBox="0 0 20 20"
                         className="mx-1"
                       />
-                    )}
+                    </div>
 
                     {shouldShowForeignKeyIcon && props?.data?.isTargetTable && (
                       <ToolTip
@@ -552,7 +583,8 @@ function DataSourceSelect({
           IndicatorSeparator: () => null,
           DropdownIndicator,
           GroupHeading: CustomGroupHeading,
-          ...(optionsCount < 5 && !scrollEventForColumnValues && { Control: () => '' }),
+          ...((showControlComponent ? false : optionsCount < 5) &&
+            !scrollEventForColumnValues && { Control: () => '' }),
         }}
         styles={{
           control: (style) => ({
@@ -685,7 +717,8 @@ const MenuList = ({
   ...props
 }) => {
   const menuListStyles = getStyles('menuList', props);
-  const referencedColumnDetails = foreignKeys?.find((item) => item.column_names[0] === cellColumnName);
+  const referencedColumnDetails =
+    Array.isArray(foreignKeys) && foreignKeys.find((item) => item?.column_names[0] === cellColumnName);
 
   const handleNavigateToReferencedTable = () => {
     const data = {

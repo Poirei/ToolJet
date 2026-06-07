@@ -1,6 +1,7 @@
 import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { sanitizeInput } from '../helpers/utils.helper';
+import { AppVersionStatus } from '@entities/app_version.entity';
 
 export class AppVersionUpdateDto {
   @IsString()
@@ -23,4 +24,26 @@ export class AppVersionUpdateDto {
 
   @IsOptional()
   globalSettings: any;
+
+  @IsOptional()
+  pageSettings: any;
+
+  // Workflow related fields
+  @IsOptional()
+  @IsString()
+  @IsUUID()
+  currentEnvironmentId: string;
+
+  @IsOptional()
+  definition: any;
+
+  @IsOptional()
+  @IsBoolean()
+  is_user_switched_version: boolean;
+
+  @IsOptional()
+  status: AppVersionStatus;
+
+  @IsOptional()
+  description: string;
 }

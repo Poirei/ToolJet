@@ -43,7 +43,7 @@ The Query Panel consists of two sections:
 **Example**: For a PostgreSQL query named *fetchUsers* that is fetching data from the *allUsers* table, you might set a parameter to a single user by passing in the id parameter.
 
 ```sql
-SELECT * FROM allUsers WHERE id = {{parameters.id}}
+SELECT * FROM allUsers WHERE id = '{{parameters.id}}'
 ```
 
 Here, `{{parameters.id}}` is a parameter that you can define by clicking on the **+** icon on the Query Panel header next to the `Parameters` label.
@@ -87,7 +87,7 @@ You can insert values from the components in queries. For instance, the above co
 
 ```sql
 INSERT INTO feature_requests (id, title, description, votes, priority)
-VALUES (10, `{{components.textinput1.value}}`, `{{components.textinput2.value}}`, 0, 2);
+VALUES (10, '{{components.textinput1.value}}', '{{components.textinput2.value}}', 0, 2);
 ```
 
 You can apply the same principles to upcoming examples.
@@ -105,7 +105,7 @@ SET
     description = 'Updated Feature Description',
     votes = 15,
     priority = 2
-WHERE id = `{{components.table1.selectedRow.id}}`;
+WHERE id = '{{components.table1.selectedRow.id}}';
 ```
 
 <div style={{textAlign: 'center', marginBottom:'15px'}}>
@@ -119,7 +119,7 @@ To delete data:
 **Example**: Craft a query `deleteRequest` that removes a product from the database based on a parameter.
 
 ```sql
-DELETE FROM feature_requests WHERE votes < {{parameters.minimumVotes}};
+DELETE FROM feature_requests WHERE votes < '{{parameters.minimumVotes}}';
 ```
 
 <div style={{textAlign: 'center', marginBottom:'15px'}}>

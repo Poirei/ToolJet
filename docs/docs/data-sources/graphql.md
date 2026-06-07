@@ -40,9 +40,11 @@ ToolJet requires the following to connect to a GraphQL datasource:
 4. Click on the **Preview** button to preview the output or Click on the **Run** button to create and trigger the query.
 
 ### Required Parameters:
+
 - **Query**
 
 ### Optional Parameters
+
 - **Variable**
 - **Headers**
 
@@ -53,6 +55,7 @@ ToolJet requires the following to connect to a GraphQL datasource:
 </div>
 
 #### Example
+
 ```yaml
 {
   todos {
@@ -63,7 +66,7 @@ ToolJet requires the following to connect to a GraphQL datasource:
 ```
 
 :::tip
-Query results can be transformed using transformations. Read our transformations documentation to see how: [link](/docs/tutorial/transformations)
+Query results can be transformed using transformations. Read our transformations documentation to see how: [link](/docs/beta/app-builder/custom-code/transform-data)
 :::
 
 </div>
@@ -75,7 +78,7 @@ Metadata is additional information about the data returned by the GraphQL query.
 While accessing the properties of the metadata object, which contains a hyphen, you can use the bracket notation. For example, to access the `content-length` property, you can use `{{queries.graphql1.metadata.request.headers["content-length"]}}` or `{{queries.graphql1.metadata.request.headers."content-length"}}`.
 :::
 
-<details>
+<details id="tj-dropdown">
 <summary>**Example Metadata**</summary>
 
 ```json
@@ -117,4 +120,5 @@ While accessing the properties of the metadata object, which contains a hyphen, 
   }
 }
 ```
+
 </details>

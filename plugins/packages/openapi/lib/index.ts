@@ -27,6 +27,23 @@ export default class Openapi implements QueryService {
     return params;
   }
 
+  private parseValue = (value) => {
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value);
+    } catch (e) {
+      return value;
+    }
+  };
+
+  private parseRequest = (obj) => {
+    if (!obj) return obj;
+    return Object.keys(obj).reduce((acc, key) => {
+      acc[key] = this.parseValue(obj[key]);
+      return acc;
+    }, {});
+  };
+
   async run(
     sourceOptions: SourceOptions,
     queryOptions: QueryOptions,
@@ -36,8 +53,13 @@ export default class Openapi implements QueryService {
   ): Promise<RestAPIResult> {
     const { host, path, operation, params } = queryOptions;
     const { request, query, header, path: pathParams } = params;
-    const url = new URL(host + this.resolvePathParams(pathParams, path));
-    const json = operation !== 'get' ? this.sanitizeObject(request) : undefined;
+    const resolvedHost = sourceOptions.host || host;
+    const url = new URL(resolvedHost + this.resolvePathParams(pathParams, path));
+    const parsedRequest = request ? this.parseRequest(request) : undefined;
+    const json =
+      operation !== 'get' && parsedRequest && Object.keys(parsedRequest).length > 0
+        ? this.sanitizeObject(parsedRequest)
+        : undefined;
 
     const _requestOptions: OptionsOfTextResponseBody = {
       method: operation,
@@ -45,10 +67,13 @@ export default class Openapi implements QueryService {
       searchParams: {
         ...query,
       },
-      json,
     };
 
-    const authValidatedRequestOptions: QueryResult = validateAndSetRequestOptionsBasedOnAuthType(
+    if (json && Object.keys(json).length > 0) {
+      _requestOptions.json = json;
+    }
+
+    const authValidatedRequestOptions: QueryResult = await validateAndSetRequestOptionsBasedOnAuthType(
       sourceOptions,
       context,
       _requestOptions,
@@ -66,8 +91,10 @@ export default class Openapi implements QueryService {
 
     try {
       const response = await got(url, requestOptions);
+      const contentType = response.headers['content-type'];
 
-      result = JSON.parse(response.body);
+      result = contentType && contentType.includes('application/json') ? JSON.parse(response.body) : response.body;
+
       requestObject = {
         requestUrl: response.request.requestUrl,
         method: response.request.options.method,

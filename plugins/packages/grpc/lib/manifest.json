@@ -7,6 +7,7 @@
   "source": {
     "name": "gRPC",
     "kind": "grpc",
+    "tags": ["legacy"],
     "options": {
       "url": {
         "type": "string"
@@ -71,7 +72,7 @@
       "description": "0.0.0.0:50051"
     },
     "auth_type": {
-      "label": "Authentication Type",
+      "label": "Authentication type",
       "key": "auth_type",
       "type": "react-component-oauth-authentication",
       "description": "key-value pair headers for rest api"

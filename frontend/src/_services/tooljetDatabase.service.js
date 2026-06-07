@@ -1,16 +1,23 @@
 import HttpClient from '@/_helpers/http-client';
 import { deepClone } from '@/_helpers/utilities/utils.helpers';
+import { authHeader } from '@/_helpers';
 import _ from 'lodash';
 
 const tooljetAdapter = new HttpClient();
 
 function findOne(headers, tableId, query = '') {
-  tooljetAdapter.headers = { ...tooljetAdapter.headers, ...headers };
   return tooljetAdapter.get(`/tooljet-db/proxy/${tableId}?${query}`, headers);
 }
 
 function findAll(organizationId) {
   return tooljetAdapter.get(`/tooljet-db/organizations/${organizationId}/tables`);
+}
+
+async function getTablesLimit() {
+  const headers = authHeader();
+  const organizationId = headers['tj-workspace-id'];
+  const res = await tooljetAdapter.get(`/tooljet-db/tables/limits/${organizationId}`);
+  return res;
 }
 
 function createTable(organizationId, tableName, columns, foreignKeyColumns, checkingValues = false) {
@@ -43,17 +50,19 @@ function createColumn(
   isUniqueConstraint,
   isCheckSerialType = false,
   checkingValues = false,
-  foreignKeyArray
+  foreignKeyArray,
+  configurations = {}
 ) {
   return tooljetAdapter.post(`/tooljet-db/organizations/${organizationId}/table/${tableId}/column`, {
     column: {
       column_name: columnName,
       data_type: dataType,
-      ...(!isCheckSerialType && { column_default: defaultValue === 'Null' ? null : defaultValue }),
+      ...(!isCheckSerialType && { column_default: defaultValue }),
       constraints_type: {
         is_not_null: isNotNull,
         is_unique: isUniqueConstraint,
       },
+      configurations,
     },
     ...(checkingValues && { foreign_keys: foreignKeyArray }),
   });
@@ -123,8 +132,8 @@ function deleteTable(organizationId, tableName) {
   return tooljetAdapter.delete(`/tooljet-db/organizations/${organizationId}/table/${tableName}`);
 }
 
-function joinTables(organizationId, data) {
-  return tooljetAdapter.post(`tooljet-db/organizations/${organizationId}/join`, data);
+function joinTables(headers, organizationId, data) {
+  return tooljetAdapter.post(`tooljet-db/organizations/${organizationId}/join`, data, headers);
 }
 
 export const tooljetDatabaseService = {
@@ -140,6 +149,7 @@ export const tooljetDatabaseService = {
   deleteColumn,
   deleteTable,
   renameTable,
+  getTablesLimit,
   bulkUpload,
   joinTables,
   updateColumn,

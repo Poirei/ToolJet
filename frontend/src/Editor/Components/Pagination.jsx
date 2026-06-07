@@ -1,25 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export const Pagination = ({
+  id,
   height,
   properties,
   styles,
-  exposedVariables,
   setExposedVariable,
   fireEvent,
   darkMode,
   dataCy,
   width,
 }) => {
-  const { visibility, disabledState, boxShadow } = styles;
+  const isInitialRender = useRef(true);
+  const { visibility, disabledState, boxShadow, alignment } = styles;
   const [currentPage, setCurrentPage] = useState(() => properties?.defaultPageIndex ?? 1);
-
-  useEffect(() => {
-    if (exposedVariables.currentPageIndex === null) setExposedVariable('currentPageIndex', currentPage);
-
-    if (exposedVariables.totalPages === null) setExposedVariable('totalPages', properties.numberOfPages);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exposedVariables]);
 
   const pageChanged = (number) => {
     setCurrentPage(number);
@@ -49,7 +43,13 @@ export const Pagination = ({
 
   useEffect(() => {
     if (properties.defaultPageIndex) {
-      pageChanged(properties.defaultPageIndex);
+      if (!isInitialRender.current) {
+        pageChanged(properties.defaultPageIndex);
+      } else {
+        setCurrentPage(properties.defaultPageIndex);
+        setExposedVariable('currentPageIndex', properties.defaultPageIndex);
+        isInitialRender.current = false;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [properties.defaultPageIndex]);
@@ -65,7 +65,12 @@ export const Pagination = ({
   };
 
   return (
-    <div data-disabled={disabledState} className="d-flex align-items-center" data-cy={dataCy} style={{ boxShadow }}>
+    <div
+      data-disabled={disabledState}
+      className="d-flex align-items-center"
+      data-cy={dataCy}
+      style={{ boxShadow: visibility ? boxShadow : 'none', justifyContent: alignment }}
+    >
       <ul className="pagination m-0" style={computedStyles}>
         <Pagination.Operator
           operator="<<"
@@ -207,7 +212,11 @@ const Operator = ({ operator, currentPage, totalPages, handleOnClick, darkMode }
   return (
     <React.Fragment>
       <li className={`page-item ${getDisableCls(operator, currentPage, totalPages)}`}>
-        <a style={{ cursor: 'pointer' }} className={`page-link ${darkMode && 'text-light'}`} onClick={handleOnClick}>
+        <a
+          style={{ cursor: 'pointer' }}
+          className={`page-link arrow-icon ${darkMode && 'text-light'}`}
+          onClick={handleOnClick}
+        >
           {getOperator(operator)}
         </a>
       </li>

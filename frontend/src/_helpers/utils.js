@@ -1,27 +1,65 @@
 /* eslint-disable no-useless-escape */
 import moment from 'moment';
 import _, { isEmpty } from 'lodash';
-import axios from 'axios';
 import JSON5 from 'json5';
-import { executeAction } from '@/_helpers/appUtils';
 import { toast } from 'react-hot-toast';
 import { authenticationService } from '@/_services/authentication.service';
-import { getCurrentState, useCurrentStateStore } from '@/_stores/currentStateStore';
+import { workflowExecutionsService } from '@/_services';
+import { useAppDataStore } from '@/_stores/appDataStore';
 import { getWorkspaceIdOrSlugFromURL, getSubpath, returnWorkspaceIdIfNeed, eraseRedirectUrl } from './routes';
-import { staticDataSources } from '@/Editor/QueryManager/constants';
-import { getDateTimeFormat } from '@/Editor/Components/Table/Datepicker';
-import { useDataQueriesStore } from '@/_stores/dataQueriesStore';
+import { staticDataSources } from '@/AppBuilder/QueryManager/constants';
+import { getDateTimeFormat } from './appUtils';
 import { useKeyboardShortcutStore } from '@/_stores/keyboardShortcutStore';
 import { validateMultilineCode } from './utility';
-import { componentTypes } from '@/Editor/WidgetManager/components';
+import { componentTypes } from '@/AppBuilder/WidgetManager';
 
-const reservedKeyword = ['app', 'window'];
+export const reservedKeyword = ['app', 'window'];
+
+// Function to format file size
+export function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024; // Use 1024 for binary KB/MB etc
+  const dm = 2;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+export const Constants = {
+  Global: 'Global',
+  Secret: 'Secret',
+};
+
+export const verifyConstant = (value, definedConstants = {}, definedSecrets = {}) => {
+  const globalConstantRegex = /{{constants\.([a-zA-Z0-9_]+)}}/g;
+  const secretConstantRegex = /{{secrets\.([a-zA-Z0-9_]+)}}/g;
+  if (typeof value !== 'string') {
+    return [];
+  }
+  const matches = [...(value.match(globalConstantRegex) || []), ...(value.match(secretConstantRegex) || [])];
+  if (!matches) {
+    return [];
+  }
+  const resolvedMatches = matches.map((match) => {
+    const cleanedMatch = match
+      .replace(/{{constants\./, '')
+      .replace(/{{secrets\./, '')
+      .replace(/}}/, '');
+
+    return Object.keys(definedConstants).includes(cleanedMatch) || Object.keys(definedSecrets).includes(cleanedMatch)
+      ? null
+      : cleanedMatch;
+  });
+  const invalidConstants = resolvedMatches?.filter((item) => item != null);
+  if (invalidConstants?.length) {
+    return invalidConstants;
+  }
+};
 
 export function findProp(obj, prop, defval) {
   if (typeof defval === 'undefined') defval = null;
   prop = prop.split('.');
-  console.log('prop', prop);
-  console.log('obj', obj);
+
   for (var i = 0; i < prop.length; i++) {
     if (prop[i].endsWith(']')) {
       const actual_prop = prop[i].split('[')[0];
@@ -47,12 +85,12 @@ export const pluralize = (count, noun, suffix = 's') => `${count} ${noun}${count
 
 export function resolve(data, state) {
   if (data.startsWith('{{queries.') || data.startsWith('{{globals.') || data.startsWith('{{components.')) {
-    let prop = data.replace('{{', '').replace('}}', '');
+    let prop = removeNestedDoubleCurlyBraces(data);
     return findProp(state, prop, '');
   }
 }
 
-function resolveCode(code, state, customObjects = {}, withError = false, reservedKeyword, isJsCode) {
+export function resolveCode(code, state, customObjects = {}, withError = false, reservedKeyword, isJsCode) {
   let result = '';
   let error;
 
@@ -73,6 +111,7 @@ function resolveCode(code, state, customObjects = {}, withError = false, reserve
           'client',
           'server',
           'constants',
+          'secrets',
           'parameters',
           'moment',
           '_',
@@ -90,6 +129,7 @@ function resolveCode(code, state, customObjects = {}, withError = false, reserve
         isJsCode ? undefined : state?.client,
         isJsCode ? undefined : state?.server,
         state?.constants, // Passing constants as an argument allows the evaluated code to access and utilize the constants value correctly.
+        state?.secrets || {},
         state?.parameters,
         moment,
         _,
@@ -98,10 +138,9 @@ function resolveCode(code, state, customObjects = {}, withError = false, reserve
       );
     } catch (err) {
       error = err;
-      // console.log('eval_error', err);
+      console.log('the erro is', { error, code });
     }
   }
-
   if (withError) return [result, error];
   return result;
 }
@@ -114,7 +153,7 @@ export function resolveString(str, state, customObjects, reservedKeyword, withEr
 
   if (codeMatches) {
     codeMatches.forEach((codeMatch) => {
-      const code = codeMatch.replace('{{', '').replace('}}', '');
+      const code = removeNestedDoubleCurlyBraces(codeMatch);
 
       if (reservedKeyword.includes(code)) {
         resolvedStr = resolvedStr.replace(codeMatch, '');
@@ -153,47 +192,64 @@ export function resolveString(str, state, customObjects, reservedKeyword, withEr
   return resolvedStr;
 }
 
-export function resolveReferences(object, defaultValue, customObjects = {}, withError = false, forPreviewBox = false) {
+export function resolveReferences(
+  object,
+  _state,
+  defaultValue,
+  customObjects = {},
+  withError = false,
+  forPreviewBox = false
+) {
   if (object === '{{{}}}') return '';
 
   object = _.clone(object);
-  const currentState = useCurrentStateStore.getState();
   const objectType = typeof object;
   let error;
+
+  const state = _state; // ?? useCurrentStateStore.getState(); //!state=currentstate => The state passed down as an argument retains the previous state.
+
+  if (_state?.parameters) {
+    state.parameters = { ..._state.parameters };
+  }
+
   switch (objectType) {
     case 'string': {
       if (object.includes('{{') && object.includes('}}') && object.includes('%%') && object.includes('%%')) {
-        object = resolveString(object, currentState, customObjects, reservedKeyword, withError, forPreviewBox);
+        object = resolveString(object, state, customObjects, reservedKeyword, withError, forPreviewBox);
       }
 
       if (object.startsWith('{{') && object.endsWith('}}')) {
         if ((object.match(/{{/g) || []).length === 1) {
-          const code = object.replace('{{', '').replace('}}', '');
+          const code = removeNestedDoubleCurlyBraces(object);
 
-          const _reservedKeyword = ['app', 'window', 'this']; // Case-sensitive reserved keywords
-          const keywordRegex = new RegExp(`\\b(${_reservedKeyword.join('|')})\\b`, 'i');
+          //Will be remove in next release
 
-          if (code.match(keywordRegex)) {
-            error = `${code} is a reserved keyword`;
-            return [{}, error];
+          const { status, data } = validateMultilineCode(code);
+
+          if (status === 'failed') {
+            const errMessage = `${data.message} -  ${data.description}`;
+
+            return [{}, errMessage];
           }
 
-          return resolveCode(code, currentState, customObjects, withError, reservedKeyword, true);
+          return resolveCode(code, state, customObjects, withError, [], true);
         } else {
           const dynamicVariables = getDynamicVariables(object);
 
-          for (const dynamicVariable of dynamicVariables) {
-            const value = resolveString(
-              dynamicVariable,
-              currentState,
-              customObjects,
-              reservedKeyword,
-              withError,
-              forPreviewBox
-            );
+          if (dynamicVariables) {
+            for (const dynamicVariable of dynamicVariables) {
+              const value = resolveString(
+                dynamicVariable,
+                state,
+                customObjects,
+                reservedKeyword,
+                withError,
+                forPreviewBox
+              );
 
-            if (typeof value !== 'function') {
-              object = object.replace(dynamicVariable, value);
+              if (typeof value !== 'function') {
+                object = object.replace(dynamicVariable, value);
+              }
             }
           }
         }
@@ -205,17 +261,17 @@ export function resolveReferences(object, defaultValue, customObjects = {}, with
           return [{}, error];
         }
 
-        return resolveCode(code, currentState, customObjects, withError, reservedKeyword, false);
+        return resolveCode(code, state, customObjects, withError, reservedKeyword, false);
       }
 
       const dynamicVariables = getDynamicVariables(object);
 
       if (dynamicVariables) {
         if (dynamicVariables.length === 1 && dynamicVariables[0] === object) {
-          object = resolveReferences(dynamicVariables[0], null, customObjects);
+          object = resolveReferences(dynamicVariables[0], state, null, customObjects, false, false);
         } else {
           for (const dynamicVariable of dynamicVariables) {
-            const value = resolveReferences(dynamicVariable, null, customObjects);
+            const value = resolveReferences(dynamicVariable, state, null, customObjects, false, false);
             if (typeof value !== 'function') {
               object = object.replace(dynamicVariable, value);
             }
@@ -239,7 +295,7 @@ export function resolveReferences(object, defaultValue, customObjects = {}, with
         return new_array;
       } else if (!_.isEmpty(object)) {
         Object.keys(object).forEach((key) => {
-          const resolved_object = resolveReferences(object[key]);
+          const resolved_object = resolveReferences(object[key], state);
           object[key] = resolved_object;
         });
         if (withError) return [object, error];
@@ -268,7 +324,7 @@ export function computeComponentName(componentType, currentComponents) {
   let currentNumber = currentComponentsForKind.length + 1;
   let _componentName = '';
   while (!found) {
-    _componentName = `${componentName.toLowerCase()}${currentNumber}`;
+    _componentName = `${componentName?.toLowerCase()}${currentNumber}`;
     if (
       Object.values(currentComponents).find((component) => component.component.name === _componentName) === undefined
     ) {
@@ -303,6 +359,29 @@ export function validateQueryName(name) {
   return nameRegex.test(name);
 }
 
+export function validateKebabCase(slug) {
+  const pattern = /^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$/;
+  if (slug === '') {
+    return { isValid: false, error: 'Handle cannot be empty.' };
+  }
+  if (!/^[a-zA-Z0-9]/.test(slug)) {
+    return { isValid: false, error: 'Handle must start with a letter or number.' };
+  }
+  if (/[^a-zA-Z0-9-]/.test(slug)) {
+    return { isValid: false, error: 'Handle can only contain letters, numbers, and hyphens.' };
+  }
+  if (/--/.test(slug)) {
+    return { isValid: false, error: 'Handle cannot contain consecutive hyphens.' };
+  }
+  if (slug.endsWith('-')) {
+    return { isValid: false, error: 'Handle cannot end with a hyphen.' };
+  }
+  if (!pattern.test(slug)) {
+    return { isValid: false, error: 'Handle does not match the kebab-case pattern.' };
+  }
+  return { isValid: true, error: null };
+}
+
 export const convertToKebabCase = (string) =>
   string
     .replace(/([a-z])([A-Z])/g, '$1-$2')
@@ -329,7 +408,8 @@ export function resolveWidgetFieldValue(prop, _default = [], customResolveObject
   const widgetFieldValue = prop;
 
   try {
-    return resolveReferences(widgetFieldValue, _default, customResolveObjects);
+    const state = {}; // getCurrentState();
+    return resolveReferences(widgetFieldValue, state, _default, customResolveObjects);
   } catch (err) {
     console.log(err);
   }
@@ -508,134 +588,19 @@ export function validateDates({ validationObject, widgetValue, currentState, cus
 
 export function validateEmail(email) {
   const emailRegex =
-    /^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
+    /^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[a-zA-Z]{2,})$/i;
   return emailRegex.test(email);
 }
 
-// eslint-disable-next-line no-unused-vars
-export async function executeMultilineJS(_ref, code, queryId, isPreview, mode = '', parameters = {}) {
-  const isValidCode = validateMultilineCode(code, true);
-
-  if (isValidCode.status === 'failed') {
-    return isValidCode;
-  }
-
-  const currentState = getCurrentState();
-  let result = {},
-    error = null;
-
-  //if user passes anything other than object, params are reset to empty
-  if (typeof parameters !== 'object' || parameters === null) {
-    parameters = {};
-  }
-
-  const actions = generateAppActions(_ref, queryId, mode, isPreview);
-
-  const queryDetails = useDataQueriesStore.getState().dataQueries.find((q) => q.id === queryId);
-
-  const defaultParams =
-    queryDetails?.options?.parameters?.reduce(
-      (paramObj, param) => ({
-        ...paramObj,
-        [param.name]: resolveReferences(param.defaultValue, undefined), //default values will not be resolved with currentState
-      }),
-      {}
-    ) || {};
-
-  let formattedParams = {};
-  if (queryDetails) {
-    Object.keys(defaultParams).map((key) => {
-      /** The value of param is replaced with defaultValue if its passed undefined */
-      formattedParams[key] = parameters[key] === undefined ? defaultParams[key] : parameters[key];
+export function constructSearchParams(params = {}) {
+  const searchParams = new URLSearchParams('');
+  if (!_.isEmpty(params)) {
+    Object.keys(params).map((key) => {
+      const value = params[key];
+      value && searchParams.append(key, value);
     });
-  } else {
-    //this will handle the preview case where you cannot find the queryDetails in state.
-    formattedParams = { ...parameters };
   }
-
-  for (const key of Object.keys(currentState.queries)) {
-    currentState.queries[key] = {
-      ...currentState.queries[key],
-      run: (params) => {
-        if (typeof params !== 'object' || params === null) {
-          params = {};
-        }
-        const processedParams = {};
-        const query = useDataQueriesStore.getState().dataQueries.find((q) => q.name === key);
-        query.options.parameters?.forEach((arg) => (processedParams[arg.name] = params[arg.name]));
-        return actions.runQuery(key, processedParams);
-      },
-
-      getData: () => {
-        return getCurrentState().queries[key].data;
-      },
-
-      getRawData: () => {
-        return getCurrentState().queries[key].rawData;
-      },
-
-      getloadingState: () => {
-        return getCurrentState().queries[key].isLoading;
-      },
-    };
-  }
-
-  try {
-    const AsyncFunction = new Function(`return Object.getPrototypeOf(async function(){}).constructor`)();
-    const fnParams = [
-      'moment',
-      '_',
-      'components',
-      'queries',
-      'globals',
-      'page',
-      'axios',
-      'variables',
-      'actions',
-      'client',
-      'server',
-      'constants',
-      ...(!_.isEmpty(formattedParams) ? ['parameters'] : []), // Parameters are supported if builder has added atleast one parameter to the query
-      code,
-    ];
-    var evalFn = new AsyncFunction(...fnParams);
-
-    const fnArgs = [
-      moment,
-      _,
-      currentState.components,
-      currentState.queries,
-      currentState.globals,
-      currentState.page,
-      axios,
-      currentState.variables,
-      actions,
-      currentState?.client,
-      currentState?.server,
-      currentState?.constants,
-      ...(!_.isEmpty(formattedParams) ? [formattedParams] : []), // Parameters are supported if builder has added atleast one parameter to the query
-    ];
-    result = {
-      status: 'ok',
-      data: await evalFn(...fnArgs),
-    };
-  } catch (err) {
-    console.log('JS execution failed: ', err);
-    error = err.stack.split('\n')[0];
-    result = { status: 'failed', data: { message: error, description: error } };
-  }
-
-  if (hasCircularDependency(result)) {
-    return {
-      status: 'failed',
-      data: {
-        message: 'Circular dependency detected',
-        description: 'Cannot resolve circular dependency',
-      },
-    };
-  }
-
-  return result;
+  return searchParams;
 }
 
 export function toQuery(params, delimiter = '&') {
@@ -661,6 +626,24 @@ export const isJson = (str) => {
   return true;
 };
 
+export const isStringValidJson = (str) => {
+  try {
+    JSON.parse(str);
+  } catch (e) {
+    return false;
+  }
+  return true;
+};
+
+export const isObjectValidJson = (obj) => {
+  try {
+    JSON.stringify(obj);
+  } catch (e) {
+    return false;
+  }
+  return true;
+};
+
 export function buildURLWithQuery(url, query = {}) {
   return `${url}?${toQuery(query)}`;
 }
@@ -679,265 +662,263 @@ export const handleCircularStructureToJSON = () => {
   };
 };
 
-export function hasCircularDependency(obj) {
-  let seenObjects = new WeakSet();
-
-  function detect(obj) {
-    if (obj && typeof obj === 'object') {
-      if (seenObjects.has(obj)) {
-        // Circular reference found
-        return true;
-      }
-      seenObjects.add(obj);
-
-      for (let key in obj) {
-        if (obj.hasOwnProperty(key) && detect(obj[key])) {
-          return true;
-        }
-      }
-    }
+export function hasCircularDependency(obj, stack = new Set()) {
+  if (typeof obj !== 'object' || obj === null) {
     return false;
   }
 
-  return detect(obj);
+  if (stack.has(obj)) {
+    return true;
+  }
+
+  stack.add(obj);
+
+  for (let key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      if (hasCircularDependency(obj[key], new Set(stack))) {
+        return true;
+      }
+    }
+  }
+
+  stack.delete(obj);
+  return false;
 }
 
 export const hightlightMentionedUserInComment = (comment) => {
   var regex = /(\()([^)]+)(\))/g;
   return comment.replace(regex, '<span class=mentioned-user>$2</span>');
 };
+//   const currentPageId = _ref.currentPageId;
+//   const currentComponents = _ref.appDefinition?.pages[currentPageId]?.components
+//     ? Object.entries(_ref.appDefinition.pages[currentPageId]?.components)
+//     : {};
 
-export const generateAppActions = (_ref, queryId, mode, isPreview = false) => {
-  const currentPageId = _ref.currentPageId;
-  const currentComponents = _ref.appDefinition?.pages[currentPageId]?.components
-    ? Object.entries(_ref.appDefinition.pages[currentPageId]?.components)
-    : {};
+//   const runQuery = (queryName = '', parameters) => {
+//     const query = useDataQueriesStore.getState().dataQueries.find((query) => {
+//       const isFound = query.name === queryName;
+//       if (isPreview) {
+//         return isFound;
+//       } else {
+//         return isFound && isQueryRunnable(query);
+//       }
+//     });
 
-  const runQuery = (queryName = '', parameters) => {
-    const query = useDataQueriesStore.getState().dataQueries.find((query) => {
-      const isFound = query.name === queryName;
-      if (isPreview) {
-        return isFound;
-      } else {
-        return isFound && isQueryRunnable(query);
-      }
-    });
+//     const processedParams = {};
+//     if (_.isEmpty(query) || queryId === query?.id) {
+//       const errorMsg = queryId === query?.id ? 'Cannot run query from itself' : 'Query not found';
+//       toast.error(errorMsg);
+//       return;
+//     }
 
-    const processedParams = {};
-    if (_.isEmpty(query) || queryId === query?.id) {
-      const errorMsg = queryId === query?.id ? 'Cannot run query from itself' : 'Query not found';
-      toast.error(errorMsg);
-      return;
-    }
+//     if (!_.isEmpty(query?.options?.parameters)) {
+//       query.options.parameters?.forEach(
+//         (param) => parameters && (processedParams[param.name] = parameters?.[param.name])
+//       );
+//     }
 
-    if (!_.isEmpty(query?.options?.parameters)) {
-      query.options.parameters?.forEach(
-        (param) => parameters && (processedParams[param.name] = parameters?.[param.name])
-      );
-    }
+//     // if (isPreview) {
+//     //   return previewQuery(_ref, query, true, processedParams);
+//     // }
 
-    // if (isPreview) {
-    //   return previewQuery(_ref, query, true, processedParams);
-    // }
+//     const event = {
+//       actionId: 'run-query',
+//       queryId: query.id,
+//       queryName: query.name,
+//       parameters: processedParams,
+//     };
 
-    const event = {
-      actionId: 'run-query',
-      queryId: query.id,
-      queryName: query.name,
-      parameters: processedParams,
-    };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-    return executeAction(_ref, event, mode, {});
-  };
+//   const setVariable = (key = '', value = '') => {
+//     if (key) {
+//       const event = {
+//         actionId: 'set-custom-variable',
+//         key,
+//         value,
+//       };
+//       return executeAction(_ref, event, mode, {});
+//     }
+//   };
 
-  const setVariable = (key = '', value = '') => {
-    if (key) {
-      const event = {
-        actionId: 'set-custom-variable',
-        key,
-        value,
-      };
-      return executeAction(_ref, event, mode, {});
-    }
-  };
+//   const getVariable = (key = '') => {
+//     if (key) {
+//       const event = {
+//         actionId: 'get-custom-variable',
+//         key,
+//       };
+//       return executeAction(_ref, event, mode, {});
+//     }
+//   };
 
-  const getVariable = (key = '') => {
-    if (key) {
-      const event = {
-        actionId: 'get-custom-variable',
-        key,
-      };
-      return executeAction(_ref, event, mode, {});
-    }
-  };
+//   const unSetVariable = (key = '') => {
+//     if (key) {
+//       const event = {
+//         actionId: 'unset-custom-variable',
+//         key,
+//       };
+//       return executeAction(_ref, event, mode, {});
+//     }
+//   };
 
-  const unSetVariable = (key = '') => {
-    if (key) {
-      const event = {
-        actionId: 'unset-custom-variable',
-        key,
-      };
-      return executeAction(_ref, event, mode, {});
-    }
-  };
+//   const showAlert = (alertType = '', message = '') => {
+//     const event = {
+//       actionId: 'show-alert',
+//       alertType,
+//       message,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const showAlert = (alertType = '', message = '') => {
-    const event = {
-      actionId: 'show-alert',
-      alertType,
-      message,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const logout = () => {
+//     const event = {
+//       actionId: 'logout',
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const logout = () => {
-    const event = {
-      actionId: 'logout',
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const showModal = (modalName = '') => {
+//     let modal = '';
+//     for (const [key, value] of currentComponents) {
+//       if (value.component.name === modalName) {
+//         modal = key;
+//       }
+//     }
 
-  const showModal = (modalName = '') => {
-    let modal = '';
-    for (const [key, value] of currentComponents) {
-      if (value.component.name === modalName) {
-        modal = key;
-      }
-    }
+//     const event = {
+//       actionId: 'show-modal',
+//       modal,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-    const event = {
-      actionId: 'show-modal',
-      modal,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const closeModal = (modalName = '') => {
+//     let modal = '';
+//     for (const [key, value] of currentComponents) {
+//       if (value.component.name === modalName) {
+//         modal = key;
+//       }
+//     }
 
-  const closeModal = (modalName = '') => {
-    let modal = '';
-    for (const [key, value] of currentComponents) {
-      if (value.component.name === modalName) {
-        modal = key;
-      }
-    }
+//     const event = {
+//       actionId: 'close-modal',
+//       modal,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-    const event = {
-      actionId: 'close-modal',
-      modal,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const setLocalStorage = (key = '', value = '') => {
+//     const event = {
+//       actionId: 'set-localstorage-value',
+//       key,
+//       value,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const setLocalStorage = (key = '', value = '') => {
-    const event = {
-      actionId: 'set-localstorage-value',
-      key,
-      value,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const copyToClipboard = (contentToCopy = '') => {
+//     const event = {
+//       actionId: 'copy-to-clipboard',
+//       contentToCopy,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const copyToClipboard = (contentToCopy = '') => {
-    const event = {
-      actionId: 'copy-to-clipboard',
-      contentToCopy,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const goToApp = (slug = '', queryParams = []) => {
+//     const event = {
+//       actionId: 'go-to-app',
+//       slug,
+//       queryParams,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const goToApp = (slug = '', queryParams = []) => {
-    const event = {
-      actionId: 'go-to-app',
-      slug,
-      queryParams,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const generateFile = (fileName, fileType, data) => {
+//     if (!fileName || !fileType || !data) {
+//       return toast.error('Action failed: fileName, fileType and data are required');
+//     }
 
-  const generateFile = (fileName, fileType, data) => {
-    if (!fileName || !fileType || !data) {
-      return toast.error('Action failed: fileName, fileType and data are required');
-    }
+//     const event = {
+//       actionId: 'generate-file',
+//       fileName,
+//       data,
+//       fileType,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-    const event = {
-      actionId: 'generate-file',
-      fileName,
-      data,
-      fileType,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const setPageVariable = (key = '', value = '') => {
+//     const event = {
+//       actionId: 'set-page-variable',
+//       key,
+//       value,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const setPageVariable = (key = '', value = '') => {
-    const event = {
-      actionId: 'set-page-variable',
-      key,
-      value,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const getPageVariable = (key = '') => {
+//     const event = {
+//       actionId: 'get-page-variable',
+//       key,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const getPageVariable = (key = '') => {
-    const event = {
-      actionId: 'get-page-variable',
-      key,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const unsetPageVariable = (key = '') => {
+//     const event = {
+//       actionId: 'unset-page-variable',
+//       key,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-  const unsetPageVariable = (key = '') => {
-    const event = {
-      actionId: 'unset-page-variable',
-      key,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
+//   const switchPage = (pageHandle, queryParams = []) => {
+//     if (isPreview) {
+//       mode != 'view' &&
+//         toast('Page will not be switched for query preview', {
+//           icon: '⚠️',
+//         });
+//       return Promise.resolve();
+//     }
+//     const pages = _ref.appDefinition.pages;
+//     const pageId = Object.keys(pages).find((key) => pages[key].handle === pageHandle);
 
-  const switchPage = (pageHandle, queryParams = []) => {
-    if (isPreview) {
-      mode != 'view' &&
-        toast('Page will not be switched for query preview', {
-          icon: '⚠️',
-        });
-      return Promise.resolve();
-    }
-    const pages = _ref.appDefinition.pages;
-    const pageId = Object.keys(pages).find((key) => pages[key].handle === pageHandle);
+//     if (!pageId) {
+//       mode === 'edit' &&
+//         toast('Valid page handle is required', {
+//           icon: '⚠️',
+//         });
+//       return Promise.resolve();
+//     }
 
-    if (!pageId) {
-      mode === 'edit' &&
-        toast('Valid page handle is required', {
-          icon: '⚠️',
-        });
-      return Promise.resolve();
-    }
+//     const event = {
+//       actionId: 'switch-page',
+//       pageId,
+//       queryParams,
+//     };
+//     return executeAction(_ref, event, mode, {});
+//   };
 
-    const event = {
-      actionId: 'switch-page',
-      pageId,
-      queryParams,
-    };
-    return executeAction(_ref, event, mode, {});
-  };
-
-  return {
-    runQuery,
-    setVariable,
-    getVariable,
-    unSetVariable,
-    showAlert,
-    logout,
-    showModal,
-    closeModal,
-    setLocalStorage,
-    copyToClipboard,
-    goToApp,
-    generateFile,
-    setPageVariable,
-    getPageVariable,
-    unsetPageVariable,
-    switchPage,
-  };
-};
+//   return {
+//     runQuery,
+//     setVariable,
+//     getVariable,
+//     unSetVariable,
+//     showAlert,
+//     logout,
+//     showModal,
+//     closeModal,
+//     setLocalStorage,
+//     copyToClipboard,
+//     goToApp,
+//     generateFile,
+//     setPageVariable,
+//     getPageVariable,
+//     unsetPageVariable,
+//     switchPage,
+//   };
+// };
 
 export const loadPyodide = async () => {
   try {
@@ -1019,6 +1000,25 @@ export function isExpectedDataType(data, expectedDataType) {
   return data;
 }
 
+export function getDateDifferenceInDays(date1, date2) {
+  const oneDay = 24 * 60 * 60 * 1000;
+  const utcDate1 = Date.UTC(date1.getUTCFullYear(), date1.getUTCMonth(), date1.getUTCDate());
+  const utcDate2 = Date.UTC(date2.getUTCFullYear(), date2.getUTCMonth(), date2.getUTCDate());
+  const timeDiff = Math.abs(utcDate2 - utcDate1);
+  const daysDiff = Math.round(timeDiff / oneDay);
+  return daysDiff;
+}
+
+export function convertDateFormat(dateString) {
+  const date = new Date(dateString);
+  const options = { day: '2-digit', month: 'short', year: 'numeric' };
+  options.timeZone = 'UTC';
+  const formattedDate = date.toLocaleDateString('en-IN', options).replace(/-/g, ' ');
+  return formattedDate;
+}
+
+export const returnDevelopmentEnv = (environments) => environments.find((env) => env.priority === 1);
+
 export const validateName = (
   name,
   nameType,
@@ -1031,7 +1031,7 @@ export const validateName = (
 ) => {
   const newName = name;
   let errorMsg = '';
-  if (emptyCheck && !newName) {
+  if (emptyCheck && (!newName || newName.trim().length === 0)) {
     errorMsg = `${nameType} can't be empty`;
     showError &&
       toast.error(errorMsg, {
@@ -1090,6 +1090,7 @@ export const validateName = (
     const reservedPaths = [
       'forgot-password',
       'switch-workspace',
+      'switch-workspace-archived',
       'reset-password',
       'invitations',
       'organization-invitations',
@@ -1147,8 +1148,6 @@ export const handleHttpErrorMessages = ({ statusCode, error }, feature_name) => 
   }
 };
 
-export const defaultAppEnvironments = [{ name: 'production', isDefault: true, priority: 3 }];
-
 export const deepEqual = (obj1, obj2, excludedKeys = []) => {
   if (obj1 === obj2) {
     return true;
@@ -1182,6 +1181,19 @@ export const deepEqual = (obj1, obj2, excludedKeys = []) => {
   return true;
 };
 
+export const defaultAppEnvironments = [
+  { name: 'development', isDefault: false, priority: 1 },
+  { name: 'staging', isDefault: false, priority: 2 },
+  { name: 'production', isDefault: true, priority: 3 },
+];
+
+export const executeWorkflow = async (self, workflowId, _blocking = false, params = {}, appEnvId) => {
+  const { appId } = useAppDataStore.getState();
+  const currentState = {}; // getCurrentState();
+  const resolvedParams = resolveReferences(params, currentState, {}, {});
+  const executionResponse = await workflowExecutionsService.execute(workflowId, resolvedParams, appId, appEnvId);
+  return { data: executionResponse.result };
+};
 export const redirectToWorkspace = () => {
   const path = eraseRedirectUrl();
   const redirectPath = `${returnWorkspaceIdIfNeed(path)}${path && path !== '/' ? path : ''}`;
@@ -1227,11 +1239,16 @@ export const USER_DRAWER_MODES = {
 
 export const humanizeifDefaultGroupName = (groupName) => {
   switch (groupName) {
-    case 'all_users':
-      return 'All users';
+    case 'end-user':
+      return 'End-user';
 
     case 'admin':
       return 'Admin';
+    case 'builder':
+      return 'Builder';
+
+    case 'All data source':
+      return 'All data sources';
 
     default:
       return groupName;
@@ -1247,7 +1264,7 @@ export const computeColor = (styleDefinition, value, meta) => {
       return value;
     }
     if (meta?.displayName == 'Text color') {
-      value = value == '#FFFFFF' ? '#1B1F24' : value;
+      value = value == '#FFFFFF' ? 'var(--cc-primary-text)' : value;
       return value;
     }
     if (meta?.displayName == 'Icon color') {
@@ -1300,4 +1317,155 @@ export const triggerKeyboardShortcut = (keyCallbackFnArray, initiator) => {
 //For <>& UI display issues
 export function decodeEntities(encodedString) {
   return encodedString?.replace(/&lt;/gi, '<')?.replace(/&gt;/gi, '>')?.replace(/&amp;/gi, '&');
+}
+
+export const removeNestedDoubleCurlyBraces = (str) => {
+  const transformedInput = str.split('');
+  let iter = 0;
+  const stack = [];
+
+  while (iter < str.length - 1) {
+    if (transformedInput[iter] === '{' && transformedInput[iter + 1] === '{') {
+      transformedInput[iter] = 'le';
+      transformedInput[iter + 1] = 'le';
+      stack.push(2);
+      iter += 2;
+    } else if (transformedInput[iter] === '{') {
+      stack.push(1);
+      iter++;
+    } else if (transformedInput[iter] === '}' && stack.length > 0 && stack[stack.length - 1] === 1) {
+      stack.pop();
+      iter++;
+    } else if (
+      transformedInput[iter] === '}' &&
+      stack.length > 0 &&
+      transformedInput[iter + 1] === '}' &&
+      stack[stack.length - 1] === 2
+    ) {
+      stack.pop();
+      transformedInput[iter] = 'ri';
+      transformedInput[iter + 1] = 'ri';
+      iter += 2;
+    } else {
+      iter++;
+    }
+  }
+
+  iter = 0;
+  let shouldRemoveSpace = true;
+  while (iter < str.length) {
+    if (transformedInput[iter] === ' ' && shouldRemoveSpace) {
+      transformedInput[iter] = '';
+    } else if (transformedInput[iter] === 'le') {
+      shouldRemoveSpace = true;
+      transformedInput[iter] = '';
+    } else {
+      shouldRemoveSpace = false;
+    }
+    iter++;
+  }
+
+  iter = str.length - 1;
+  shouldRemoveSpace = true;
+  while (iter >= 0) {
+    if (transformedInput[iter] === ' ' && shouldRemoveSpace) {
+      transformedInput[iter] = '';
+    } else if (transformedInput[iter] === 'ri') {
+      shouldRemoveSpace = true;
+      transformedInput[iter] = '';
+    } else {
+      shouldRemoveSpace = false;
+    }
+    iter--;
+  }
+
+  return transformedInput.join('');
+};
+export const validatePassword = (value) => {
+  if (!value.trim()) {
+    return 'Password is required';
+  }
+
+  // const passwordRulesEnabled = config.ENABLE_PASSWORD_COMPLEXITY_RULES === 'true';
+  // const PASSWORD_REGEX = /^(?=.{12,24}$)[A-Za-z0-9!@#\$%\^&\*\(\)_+\-=\{\}\[\]:;\"',\.\?\/\\\|]+$/;
+  // if (passwordRulesEnabled) {
+  //   if (!PASSWORD_REGEX.test(value)) {
+  //     return 'Password must be 12-24 characters long and can include letters, numbers, and special characters.';
+  //   }
+  // }
+  // if (value.length < 5) {
+  //   return 'Password must be at least 5 characters long';
+  // }
+  // if (value.length > 100) {
+  //   return 'Password can be at max 100 characters long';
+  // }
+};
+
+export const checkConditionsForRoute = (conditions, conditionsObj) => {
+  if (!conditions || conditions.length === 0) {
+    return true;
+  }
+  return conditions.every((condition) => conditionsObj?.[condition] === true);
+};
+
+export const hasBuilderRole = (roleObj) => {
+  if (roleObj.name) return roleObj.name === 'builder';
+  return false;
+};
+
+export function checkIfToolJetCloud(version) {
+  const parsed = version.split('-');
+  return parsed[1] === 'cloud';
+}
+
+export function checkIfToolJetEE(version) {
+  const parsed = version.split('-');
+  return parsed[1] === 'ee';
+}
+
+export const calculateDueDate = (currentPeriodEnd) => {
+  const currentPeriodEndDate = new Date(currentPeriodEnd * 1000);
+  const currentDate = new Date();
+  let dueMessage;
+
+  if (currentPeriodEndDate > currentDate) {
+    const timeDiff = currentPeriodEndDate.getTime() - currentDate.getTime();
+    const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
+
+    if (daysDiff < 7) {
+      dueMessage = `Due in ${daysDiff} days`;
+    } else {
+      const options = { day: 'numeric', month: 'short', year: 'numeric' };
+      dueMessage = currentPeriodEndDate.toLocaleDateString('en-GB', options).replace(',', '');
+      dueMessage = `Next due on ${dueMessage}`;
+    }
+  } else if (currentPeriodEndDate.toDateString() === currentDate.toDateString()) {
+    dueMessage = `Due today`;
+  } else {
+    const timeDiff = currentDate.getTime() - currentPeriodEndDate.getTime();
+    const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
+    dueMessage = `Due ${daysDiff} days ago`;
+  }
+
+  return dueMessage;
+};
+
+export const centsToUSD = (amountInCents) => {
+  return (amountInCents / 100).toFixed(2);
+};
+
+export function formatPrice(price) {
+  return price?.toString()?.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+export function formatToDDMMYYYY(isoDate) {
+  if (!isoDate) return '';
+  const d = new Date(isoDate);
+
+  // use UTC to avoid timezone shifts
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0'); // months are 0-based
+  const year = d.getUTCFullYear();
+
+  return `${day}/${month}/${year}`;
 }

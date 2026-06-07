@@ -19,14 +19,26 @@ export const appsService = {
   changeIcon,
   deleteApp,
   getApp,
-  getAppBySlug,
   getAppByVersion,
   saveApp,
   getAppUsers,
   getVersions,
   getTables,
+  getWorkflows,
+  getAppsLimit,
+  getWorkflowLimit,
   releaseVersion,
 };
+
+function getWorkflows(id) {
+  const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
+  return fetch(`${config.apiUrl}/apps/${id}/workflows`, requestOptions).then(handleResponse);
+}
+
+function getAppsLimit() {
+  const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
+  return fetch(`${config.apiUrl}/license/apps/limits`, requestOptions).then(handleResponse);
+}
 
 function validateReleasedApp(slug) {
   const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
@@ -40,22 +52,43 @@ function validatePrivateApp(slug, queryParams) {
   return fetch(
     `${config.apiUrl}/apps/validate-private-app-access/${slug}${query ? `?${query}` : ''}`,
     requestOptions
-  ).then(handleResponse);
+  ).then((response) => handleResponse(response, false, { param: 'version', value: 'versionName' }));
 }
 
-function getAll(page, folder, searchKey) {
+//use default value for type of apps i.e.'front-end'
+function getAll(page, folder, searchKey, type = 'front-end') {
   const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
-  if (page === 0) return fetch(`${config.apiUrl}/apps`, requestOptions).then(handleResponse);
+  if (page === 0) return fetch(`${config.apiUrl}/apps?type=${type}`, requestOptions).then(handleResponse);
   else
     return fetch(
-      `${config.apiUrl}/apps?page=${page}&folder=${folder || ''}&searchKey=${searchKey}`,
+      `${config.apiUrl}/apps?page=${page}&folder=${folder || ''}&searchKey=${searchKey}&type=${type}`,
       requestOptions
     ).then(handleResponse);
 }
 
 function createApp(body = {}) {
-  const requestOptions = { method: 'POST', headers: authHeader(), credentials: 'include', body: JSON.stringify(body) };
-  return fetch(`${config.apiUrl}/apps`, requestOptions).then(handleResponse);
+  const requestOptions = {
+    method: 'POST',
+    headers: authHeader(),
+    credentials: 'include',
+    body: JSON.stringify(body),
+  };
+  switch (body.type) {
+    case 'workflow':
+      return createWorkflow(requestOptions);
+    case 'module':
+      return createModule(requestOptions);
+    default:
+      return fetch(`${config.apiUrl}/apps`, requestOptions).then(handleResponse);
+  }
+}
+
+function createWorkflow(requestOptions) {
+  return fetch(`${config.apiUrl}/workflows`, requestOptions).then(handleResponse);
+}
+
+function createModule(requestOptions) {
+  return fetch(`${config.apiUrl}/modules`, requestOptions).then(handleResponse);
 }
 
 function cloneApp(id, name) {
@@ -107,31 +140,28 @@ function getApp(id, accessType) {
   );
 }
 
-function deleteApp(id) {
+function deleteApp(id, appType) {
   const requestOptions = { method: 'DELETE', headers: authHeader(), credentials: 'include' };
-  return fetch(`${config.apiUrl}/apps/${id}`, requestOptions).then(handleResponse);
-}
-
-function getAppBySlug(slug) {
-  const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
-  return fetch(`${config.apiUrl}/apps/slugs/${slug}`, requestOptions).then((response) =>
-    handleResponse(response, true)
+  return fetch(`${config.apiUrl}/${appType === 'module' ? 'modules' : 'apps'}/${id}`, requestOptions).then(
+    handleResponse
   );
 }
 
 function getAppByVersion(appId, versionId) {
   const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
-  return fetch(`${config.apiUrl}/apps/${appId}/versions/${versionId}`, requestOptions).then(handleResponse);
+  return fetch(`${config.apiUrl}/v2/apps/${appId}/versions/${versionId}`, requestOptions).then(handleResponse);
 }
 
-function saveApp(id, attributes) {
+function saveApp(id, attributes, appType) {
   const requestOptions = {
     method: 'PUT',
     headers: authHeader(),
     credentials: 'include',
     body: JSON.stringify({ app: attributes }),
   };
-  return fetch(`${config.apiUrl}/apps/${id}`, requestOptions).then(handleResponse);
+  return fetch(`${config.apiUrl}/${appType === 'module' ? 'modules' : 'apps'}/${id}`, requestOptions).then(
+    handleResponse
+  );
 }
 
 function getAppUsers(id) {
@@ -146,7 +176,7 @@ function setVisibility(appId, visibility) {
     credentials: 'include',
     body: JSON.stringify({ app: { is_public: visibility } }),
   };
-  return fetch(`${config.apiUrl}/apps/${appId}`, requestOptions).then(handleResponse);
+  return fetch(`${config.apiUrl}/apps/${appId}/public`, requestOptions).then(handleResponse);
 }
 
 function setMaintenance(appId, value) {
@@ -169,41 +199,56 @@ function setSlug(appId, slug) {
   return fetch(`${config.apiUrl}/apps/${appId}`, requestOptions).then(handleResponse);
 }
 
-function exportResource(body) {
+function exportResource(body, appType) {
   const requestOptions = {
     method: 'POST',
     headers: authHeader(),
     body: JSON.stringify(body),
     credentials: 'include',
   };
-
-  return fetch(`${config.apiUrl}/v2/resources/export`, requestOptions).then(handleResponse);
+  if (appType === 'module') {
+    return fetch(`${config.apiUrl}/modules/export`, requestOptions).then(handleResponse);
+  } else {
+    return fetch(`${config.apiUrl}/v2/resources/export`, requestOptions).then(handleResponse);
+  }
 }
 
-function importResource(body) {
+function importResource(body, appType) {
   const requestOptions = {
     method: 'POST',
     headers: authHeader(),
     credentials: 'include',
     body: JSON.stringify(body),
   };
-  return fetch(`${config.apiUrl}/v2/resources/import`, requestOptions).then(handleResponse);
+  if (appType === 'module') {
+    return fetch(`${config.apiUrl}/modules/import`, requestOptions).then(handleResponse);
+  } else {
+    return fetch(`${config.apiUrl}/v2/resources/import`, requestOptions).then(handleResponse);
+  }
 }
 
-function cloneResource(body) {
+function cloneResource(body, appType) {
   const requestOptions = {
     method: 'POST',
     headers: authHeader(),
     body: JSON.stringify(body),
     credentials: 'include',
   };
-
-  return fetch(`${config.apiUrl}/v2/resources/clone`, requestOptions).then(handleResponse);
+  if (appType === 'module') {
+    return fetch(`${config.apiUrl}/modules/clone`, requestOptions).then(handleResponse);
+  } else {
+    return fetch(`${config.apiUrl}/v2/resources/clone`, requestOptions).then(handleResponse);
+  }
 }
 
 function getTables(id) {
   const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
   return fetch(`${config.apiUrl}/apps/${id}/tables`, requestOptions).then(handleResponse);
+}
+
+function getWorkflowLimit(type) {
+  const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
+  return fetch(`${config.apiUrl}/license/workflows/limits/${type}`, requestOptions).then(handleResponse);
 }
 
 function releaseVersion(appId, versionToBeReleased) {
@@ -214,5 +259,5 @@ function releaseVersion(appId, versionToBeReleased) {
     credentials: 'include',
   };
 
-  return fetch(`${config.apiUrl}/v2/apps/${appId}/release`, requestOptions).then(handleResponse);
+  return fetch(`${config.apiUrl}/apps/${appId}/release`, requestOptions).then(handleResponse);
 }

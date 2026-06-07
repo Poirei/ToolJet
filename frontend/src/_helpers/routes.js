@@ -1,9 +1,11 @@
 /* You can add all paths and routes related utils here */
 import { stripTrailingSlash, getWorkspaceId } from '@/_helpers/utils';
+import { ERROR_TYPES } from './constants';
 import { authenticationService } from '@/_services/authentication.service';
 import queryString from 'query-string';
 import _ from 'lodash';
 import { eraseCookie, getCookie } from '.';
+import { fetchEdition } from '@/modules/common/helpers/utils';
 
 export const getPrivateRoute = (page, params = {}) => {
   const routes = {
@@ -12,11 +14,19 @@ export const getPrivateRoute = (page, params = {}) => {
     preview: '/applications/:slug/versions/:versionId/:pageHandle',
     launch: '/applications/:slug/:pageHandle',
     workspace_settings: '/workspace-settings/users',
+    workspace_settings_builder: '/workspace-settings/themes',
     settings: '/settings',
     database: '/database',
-    integrations: '/integrations',
+    integrations: '/integrations/marketplace',
     data_sources: '/data-sources',
+    audit_logs: '/audit-logs',
+    home: '/home',
+    workflows: '/workflows',
     workspace_constants: '/workspace-constants',
+    profile_settings: '/profile-settings',
+    modules: '/modules',
+    subscription: '/settings/subscription',
+    license: '/settings/license',
   };
 
   let url = routes[page];
@@ -65,16 +75,33 @@ export const getPathname = (path, excludeSlug = false) => {
 
 export const getHostURL = () => `${window.public_config?.TOOLJET_HOST}${getSubpath() ?? ''}`;
 
-export const dashboardUrl = (data, redirectTo) => {
+export const dashboardUrl = (data, redirectTo, relativePath) => {
   const { current_organization_slug, current_organization_id } = authenticationService.currentSessionValue;
   const id_slug = data
     ? data?.current_organization_slug || data?.current_organization_id
     : current_organization_slug || current_organization_id || '';
-  return `${getSubpath() ? `${getSubpath()}/${id_slug}` : `/${id_slug}`}${redirectTo || ''}`;
+  return getSubpath()
+    ? `${getSubpath()}/${id_slug}${relativePath ? relativePath : ''}${redirectTo || ''}`
+    : `/${id_slug}${relativePath ? relativePath : ''}${redirectTo || ''}`;
 };
 
-export const redirectToDashboard = (data, redirectTo) => {
-  window.location = dashboardUrl(data, redirectTo); //Get URL from DashBoardUrl
+export const redirectToDashboard = (data, redirectTo, relativePath = null) => {
+  window.location = dashboardUrl(data, redirectTo, relativePath); //Get URL from DashBoardUrl
+};
+
+export const redirectToSwitchOrArchivedAppPage = (data) => {
+  let message = data?.message ?? '';
+  const isApplicationsPath = getPathname(null, true).startsWith('/applications/');
+  if (message && message == ERROR_TYPES.WORKSPACE_ARCHIVED) {
+    const subpath = getSubpath();
+    let path = subpath ? `${subpath}/switch-workspace` : `/switch-workspace`;
+    if (isApplicationsPath) {
+      path = 'app-url-archived';
+    } else {
+      path += '-archived';
+    }
+    window.location = path;
+  }
 };
 
 export const appendWorkspaceId = (slug, path, replaceId = false) => {
@@ -82,7 +109,7 @@ export const appendWorkspaceId = (slug, path, replaceId = false) => {
   path = getPathname(path);
 
   let newPath = path;
-  if (path === '/:workspaceId' || path.split('/').length === 2) {
+  if (path === '/:workspaceId' || path.split('/').length === 2 || path.includes('settings')) {
     newPath = `/${slug}`;
   } else {
     const paths = path.split('/').filter((path) => path !== '');
@@ -103,6 +130,7 @@ export const getWorkspaceIdOrSlugFromURL = () => {
   const existedPaths = [
     'forgot-password',
     'switch-workspace',
+    'switch-workspace-archived',
     'reset-password',
     'invitations',
     'organization-invitations',
@@ -113,12 +141,18 @@ export const getWorkspaceIdOrSlugFromURL = () => {
     'confirm-invite',
     'oauth2',
     'applications',
+    'embed-apps',
     'integrations',
+    'settings',
+    'licence',
     'error',
   ];
 
   const workspaceId = subpath ? pathnameArray[subpathArray.length] : pathnameArray[0];
-  if (workspaceId === 'login') {
+  if (['login', 'ldap'].includes(workspaceId)) {
+    if (pathnameArray[pathnameArray.length - 1] === 'super-admin') {
+      return '';
+    }
     return subpath ? pathnameArray[subpathArray.length + 1] : pathnameArray[1];
   }
 
@@ -128,12 +162,21 @@ export const getWorkspaceIdOrSlugFromURL = () => {
 export const excludeWorkspaceIdFromURL = (pathname) => {
   const subPath = getSubpath();
   const tempPathname = subPath ? pathname.replace(subPath, '') : pathname;
-  if (!['/integrations', '/applications/', '/switch-workspace'].find((path) => tempPathname.startsWith(path))) {
+  if (
+    ![
+      '/instance-settings',
+      '/integrations',
+      '/applications/',
+      '/switch-workspace',
+      '/switch-workspace-archived',
+      '/organization-invitations/',
+    ].find((path) => tempPathname.startsWith(path))
+  ) {
     pathname = tempPathname;
     const paths = pathname?.split('/').filter((path) => path !== '');
     paths.shift();
     const newPath = paths.join('/');
-    return newPath ? `/${newPath}` : '/';
+    return newPath ? `/${newPath}` : '/home'; //Redirect to Home Page
   }
   return pathname;
 };
@@ -143,15 +186,45 @@ export const getSubpath = () =>
 
 export const returnWorkspaceIdIfNeed = (path) => {
   if (path) {
-    const paths = ['/applications/', '/integrations', '/organization-invitations/', '/invitations/'];
+    const paths = [
+      '/applications/',
+      '/embed-apps/',
+      '/integrations',
+      '/instance-settings',
+      '/organization-invitations/',
+      '/invitations/',
+    ];
     return !paths.find((subpath) => path.includes(subpath)) ? `/${getWorkspaceId()}` : '';
   }
   return `/${getWorkspaceId()}`;
 };
-export const getRedirectURL = (path) => {
+export const getRedirectURL = (path, isUserLoggingIn = false) => {
   let redirectLoc = '/';
+  const instanceLevelRoutes = [
+    '/all-users',
+    '/all-workspaces',
+    '/manage-instance-settings',
+    '/white-labelling',
+    '/instance-login',
+    '/smtp',
+    '/license',
+  ];
+  if (isUserLoggingIn && !path) {
+    const role = authenticationService?.currentSessionValue?.role?.name;
+    const isEndUser = role === 'end-user';
+    const isCommunityEdition = fetchEdition() === 'ce';
+
+    if (isEndUser || isCommunityEdition) {
+      path = '/'; // End-users and CE Edon't have access to Home route
+    }
+  }
+
   if (path) {
-    redirectLoc = `${returnWorkspaceIdIfNeed(path)}${path !== '/' ? path : ''}`;
+    if (instanceLevelRoutes.includes(path)) {
+      redirectLoc = `/settings${path}`;
+    } else {
+      redirectLoc = `${returnWorkspaceIdIfNeed(path)}${path !== '/' ? path : ''}`;
+    }
   } else {
     const redirectTo = getRedirectTo();
     const { from } = redirectTo ? { from: { pathname: redirectTo } } : { from: { pathname: '/' } };
@@ -168,13 +241,15 @@ export const getRedirectTo = (paramObj) => {
   let combined = Array.from(params.entries())
     .map((param) => param.join('='))
     .join('&');
-  return params.get('redirectTo') ? combined.replace('redirectTo=', '') : '/';
+  console.log(combined, 'combined');
+  return params.get('redirectTo') ? combined.replace('redirectTo=', '') : '/home'; //default redirect to
 };
 
 export const getPreviewQueryParams = () => {
   const queryParams = getQueryParams();
   return {
     ...(queryParams['version'] && { version: queryParams.version }),
+    ...(queryParams['env'] && { env: queryParams.env }),
   };
 };
 
@@ -201,4 +276,9 @@ export const eraseRedirectUrl = () => {
   const redirectPath = getCookie('redirectPath');
   redirectPath && eraseCookie('redirectPath');
   return redirectPath;
+};
+
+export const redirectToWorkflows = (data, redirectTo, relativePath = null) => {
+  const workflowUrl = `${dashboardUrl(data, redirectTo, relativePath)}/workflows`;
+  window.location = workflowUrl;
 };

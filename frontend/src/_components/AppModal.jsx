@@ -2,9 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import Modal from '../HomePage/Modal';
 import { ButtonSolid } from '@/_ui/AppButton/AppButton';
-import _ from 'lodash';
+import _, { noop } from 'lodash';
 import { validateName } from '@/_helpers/utils';
 import { FormWrapper } from './FormWrapper';
+import { PluginsListForAppModal } from './PluginsListForAppModal';
+import { generateCypressDataCy } from '@/modules/common/helpers/cypressHelpers';
+
+const APP_TYPE = {
+  WORKFLOW: 'workflow',
+  APP: 'app',
+  MODULE: 'module',
+};
 
 export function AppModal({
   closeModal,
@@ -17,6 +25,13 @@ export function AppModal({
   title,
   actionButton,
   actionLoadingButton,
+  fetchingOrgGit,
+  orgGit,
+  commitEnabled,
+  handleCommitEnableChange,
+  appType,
+  dependentPluginsDetail = [],
+  dependentPlugins = [],
 }) {
   if (!selectedAppName && templateDetails) {
     selectedAppName = templateDetails?.name || '';
@@ -24,7 +39,7 @@ export function AppModal({
     selectedAppName = '';
   }
 
-  if (actionButton === 'Clone app') {
+  if (actionButton.includes('Clone')) {
     if (selectedAppName.length >= 45) {
       selectedAppName = selectedAppName.slice(0, 45) + '_Copy';
     } else {
@@ -32,36 +47,28 @@ export function AppModal({
     }
   }
 
-  const [deploying, setDeploying] = useState(false);
   const [newAppName, setNewAppName] = useState(selectedAppName);
   const [errorText, setErrorText] = useState('');
   const [infoText, setInfoText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isNameChanged, setIsNameChanged] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [clearInput, setClearInput] = useState(false);
   const inputRef = useRef(null);
+
+  const appTypeName = APP_TYPE.WORKFLOW == appType ? 'Workflow' : APP_TYPE.MODULE == appType ? 'Module' : 'App';
 
   useEffect(() => {
     setIsNameChanged(newAppName?.trim() !== selectedAppName);
   }, [newAppName, selectedAppName]);
 
   useEffect(() => {
-    setIsSuccess(false);
-  }, [show]);
-
-  useEffect(() => {
     inputRef.current?.select();
   }, [show]);
 
   useEffect(() => {
-    setIsSuccess(false);
-    setClearInput(false);
     setNewAppName(selectedAppName);
   }, [selectedAppName]);
 
   const handleAction = async (e) => {
-    setDeploying(true);
     const trimmedAppName = newAppName.trim();
     setNewAppName(trimmedAppName);
     if (!errorText) {
@@ -82,7 +89,7 @@ export function AppModal({
           success = await processApp(trimmedAppName);
         }
         if (success === false) {
-          setErrorText('App name already exists');
+          setErrorText(`${appTypeName} name already exists`);
           setInfoText('');
         } else {
           setErrorText('');
@@ -98,6 +105,7 @@ export function AppModal({
         }
         toast.error(errorMessage, {
           position: 'top-center',
+          style: { fontSize: '12px' },
         });
       }
     }
@@ -117,11 +125,11 @@ export function AppModal({
     }
   };
 
-  const createBtnDisableState =
-    isLoading ||
-    errorText ||
-    (actionButton === 'Rename app' && (!isNameChanged || newAppName.trim().length === 0 || newAppName.length > 50)) || // For rename case
-    (actionButton !== 'Rename app' && (newAppName.length > 50 || newAppName.trim().length === 0));
+  const isNameEmpty = newAppName?.trim().length === 0;
+  const isNameTooLong = newAppName?.length > 50;
+  const isNameInvalid = isNameEmpty || isNameTooLong || !!errorText;
+  const renameRequiresChange = actionButton.includes('Rename') && !isNameChanged;
+  const createBtnDisableState = isLoading || isNameInvalid || renameRequiresChange;
 
   return (
     <Modal
@@ -142,7 +150,7 @@ export function AppModal({
           <ButtonSolid
             form="createAppForm"
             type="submit"
-            data-cy={actionButton.toLowerCase().replace(/\s+/g, '-')}
+            data-cy={generateCypressDataCy(actionButton)}
             disabled={createBtnDisableState}
           >
             {isLoading ? actionLoadingButton : actionButton}
@@ -150,64 +158,99 @@ export function AppModal({
         </>
       }
     >
-      <FormWrapper callback={handleAction} id="createAppForm">
-        <div className="row workspace-folder-modal mb-3">
-          <div className="col modal-main tj-app-input">
-            <label className="tj-input-label" data-cy="app-name-label">
-              {'App Name'}
-            </label>
-            <input
-              type="text"
-              onChange={handleInputChange}
-              className={`form-control ${errorText ? 'input-error-border' : ''}`}
-              placeholder={'Enter app name'}
-              value={newAppName}
-              data-cy="app-name-input"
-              maxLength={50}
-              autoFocus
-              ref={inputRef}
-              style={{
-                borderColor: errorText ? '#DB4324 !important' : 'initial',
-              }}
-              disabled={isLoading}
-            />
-            {errorText ? (
-              <small
-                className="tj-input-error"
+      {fetchingOrgGit ? (
+        <div className="loader-container">
+          <div className="primary-spin-loader"></div>
+        </div>
+      ) : (
+        <FormWrapper callback={handleAction} id="createAppForm">
+          <div className="row workspace-folder-modal custom-gap-16">
+            <div className="col modal-main tj-app-input">
+              <label className="tj-input-label" data-cy={`${generateCypressDataCy(appTypeName)}-name-label`}>
+                {`${appTypeName} name`}
+              </label>
+              <input
+                type="text"
+                onChange={handleInputChange}
+                className={`form-control ${errorText ? 'input-error-border' : ''}`}
+                placeholder={`Enter ${appTypeName.toLowerCase()} name`}
+                value={newAppName}
+                data-cy={`${generateCypressDataCy(appTypeName)}-name-input`}
+                maxLength={50}
+                autoFocus
+                ref={inputRef}
                 style={{
-                  fontSize: '10px',
-                  color: '#DB4324',
+                  borderColor: errorText ? '#DB4324 !important' : 'initial',
                 }}
-                data-cy="app-name-error-label"
-              >
-                {errorText}
-              </small>
-            ) : infoText || newAppName.length >= 50 ? (
-              <small
-                className="tj-input-error"
-                style={{
-                  fontSize: '10px',
-                  color: '#ED5F00',
-                }}
-                data-cy="app-name-info-label"
-              >
-                {infoText || 'Maximum length has been reached'}
-              </small>
-            ) : (
-              <small
-                className="tj-input-error"
-                style={{
-                  fontSize: '10px',
-                  color: '#7E868C',
-                }}
-                data-cy="app-name-info-label"
-              >
-                App name must be unique and max 50 characters
-              </small>
+                disabled={isLoading}
+              />
+              {errorText ? (
+                <small
+                  className="tj-input-error"
+                  style={{
+                    fontSize: '10px',
+                    color: '#DB4324',
+                  }}
+                  data-cy={`${generateCypressDataCy(appTypeName)}-name-error-label`}
+                >
+                  {errorText}
+                </small>
+              ) : infoText || newAppName.length >= 50 ? (
+                <small
+                  className="tj-input-error"
+                  style={{
+                    fontSize: '10px',
+                    color: '#ED5F00',
+                  }}
+                  data-cy={`${generateCypressDataCy(appTypeName)}-name-error-label`}
+                >
+                  {infoText || 'Maximum length has been reached'}
+                </small>
+              ) : (
+                <small
+                  className="tj-input-error"
+                  style={{
+                    fontSize: '10px',
+                    color: '#7E868C',
+                  }}
+                  data-cy={`${generateCypressDataCy(appTypeName)}-name-info-label`}
+                >
+                  {`${appTypeName} name must be unique and max 50 characters`}
+                </small>
+              )}
+              {orgGit?.is_enabled && appType != APP_TYPE.WORKFLOW && appType != APP_TYPE.MODULE && (
+                <div className="commit-changes mt-3">
+                  <div>
+                    <input
+                      class="form-check-input"
+                      checked={commitEnabled}
+                      type="checkbox"
+                      onChange={handleCommitEnableChange}
+                      data-cy="git-commit-input"
+                    />
+                  </div>
+                  <div>
+                    <div className="tj-text tj-text-xsm" data-cy="commit-changes-label">
+                      Commit changes
+                    </div>
+                    <div className="tj-text-xxsm" data-cy="commit-helper-text">
+                      This action commits the app&apos;s creation to the git repository
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {dependentPlugins && dependentPlugins.length >= 1 && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <PluginsListForAppModal
+                  dependentPlugins={dependentPlugins}
+                  dependentPluginsDetail={dependentPluginsDetail}
+                />
+              </div>
             )}
           </div>
-        </div>
-      </FormWrapper>
+        </FormWrapper>
+      )}
     </Modal>
   );
 }

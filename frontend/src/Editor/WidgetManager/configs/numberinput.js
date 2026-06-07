@@ -21,7 +21,7 @@ export const numberinputConfig = {
       type: 'code',
       displayName: 'Default value',
       validation: {
-        validation: { schema: { type: 'union', schemas: [{ type: 'string' }, { type: 'number' }] } },
+        schema: { type: 'union', schemas: [{ type: 'string' }, { type: 'number' }] },
         defaultValue: 0,
       },
     },
@@ -236,7 +236,7 @@ export const numberinputConfig = {
     },
   ],
   exposedVariables: {
-    value: 99,
+    value: 0,
     isMandatory: false,
     isVisible: true,
     isDisabled: false,
@@ -266,7 +266,7 @@ export const numberinputConfig = {
       customRule: { value: '' },
     },
     properties: {
-      value: { value: '' },
+      value: { value: '0' },
       label: { value: 'Label' },
       maxValue: { value: '' },
       minValue: { value: '' },

@@ -64,11 +64,11 @@
 
 
     //interactive overlays 
-    --interactive-weak: #FFFFFF00;
-    --interactive-default: #CCD1D54D;
-    --interactive-hover: #ACB2B959;
-    --interactive-selected: #ACB2B973;
-    --interactive-disabled: #FFFFFF00;
+    --interactive-weak: rgba(255, 255, 255, 0);
+    --interactive-default: rgba(136, 144, 153, 0.08);
+    --interactive-hover: rgba(136, 144, 153, 0.12);
+    --interactive-selected: rgba(136, 144, 153, 0.18);
+    --interactive-disabled: rgba(255, 255, 255, 0);
     --interactive-focus-outline: #4368E3;
     --interactive-focus-active: #4368E3;
     --interactive-focus-inner-shadow: #FFFFFF;
@@ -84,8 +84,8 @@
     --button-secondary-pressed: #DEE5FE;
     --button-secondary-disabled: #FFFFFF;
     --button-outline: #FFFFFF;
-    --button-outline-hover: #ACB2B94D;
-    --button-outline-pressed: #ACB2B966;
+    --button-outline-hover: rgba(136, 144, 153, 0.12);
+    --button-outline-pressed: rgba(136, 144, 153, 0.18);
     --button-outline-disabled: #FFFFFF;
     --button-danger-primary: #D72D39;
     --button-danger-primary-hover: #B5121D;
@@ -105,6 +105,22 @@
     --slider-handle: #FFFFFF;
     --slider-track: #E4E7EB;
     --slider-fill: #4368E3;
+
+    //upgrade
+    --upgrade-default: #FFAF41;
+    --upgrade-weak: #FFAF4140;
+
+    // Shadows
+    --elevation-000-box-shadow: 0px 1px 0px 0px rgba(0, 0, 0, 0.10);
+    --elevation-100-box-shadow: 0px 0px 1px 0px rgba(48, 50, 51, 0.05), 0px 1px 1px 0px rgba(48, 50, 51, 0.10);    
+    --elevation-200-box-shadow: 0px 2px 4px 0px rgba(48, 50, 51, 0.10), 0px 0px 1px 0px rgba(48, 50, 51, 0.05);
+    --elevation-300-box-shadow: 0px 4px 8px 0px rgba(48, 50, 51, 0.10), 0px 0px 1px 0px rgba(48, 50, 51, 0.05);
+    --elevation-400-box-shadow: 0px 8px 16px 0px rgba(48, 50, 51, 0.10), 0px 0px 1px 0px rgba(48, 50, 51, 0.05);
+    --elevation-500-box-shadow: 0px 16px 24px 0px rgba(48, 50, 51, 0.09), 0px 0px 1px 0px rgba(48, 50, 51, 0.05);
+    --elevation-600-box-shadow: 0px 24px 40px 0px rgba(48, 50, 51, 0.08), 0px 0px 1px 0px rgba(48, 50, 51, 0.05);
+    --elevation-700-box-shadow: 0px 32px 50px 0px rgba(48, 50, 51, 0.08), 0px 0px 1px 0px rgba(48, 50, 51, 0.05);
+    --elevation-100-box-shadow: 0px 1px 1px 0px rgba(48, 50, 51, 0.10), 0px 0px 1px 0px rgba(48, 50, 51, 0.05);
+    
 }
 
 .dark-theme {
@@ -125,7 +141,7 @@
     --background-warning-weak: #301100;
     --background-error-strong: #D03F43;
     --background-error-weak: #390809;
-    --background-Inverse: #FAFCFF;
+    --background-inverse: #FAFCFF;
 
 
     //text
@@ -172,11 +188,11 @@
 
 
     //interactive overlays 
-    --interactive-weak: #00000000;
-    --interactive-default: #A1A7AE1F;
-    --interactive-hover: #A1A7AE29;
-    --interactive-selected: #A1A7AE38;
-    --interactive-disabled: #00000000;
+    --interactive-weak: rgba(0, 0, 0, 0);
+    --interactive-default: rgba(133, 140, 148, 0.08);
+    --interactive-hover: rgba(133, 140, 148, 0.12);
+    --interactive-selected: rgba(133, 140, 148, 0.18);
+    --interactive-disabled: rgba(0, 0, 0, 0);
     --interactive-focus-outline: #4A6DD9;
     --interactive-focus-inner-shadow: #121518;
 
@@ -192,7 +208,7 @@
     --button-secondary-pressed: #213C90;
     --button-secondary-disabled: #121518;
     --button-outline: #A1A7AE1A;
-    --button-outline-hover: #A1A7AE33;
+    --button-outline-hover: rgba(133, 140, 148, 0.12);
     --button-outline-pressed: #A1A7AE4D;
     --button-outline-disabled: #121518;
     --button-danger-primary: #D03F43;
@@ -213,4 +229,20 @@
     --slider-handle: #121518;
     --slider-track: #2B3036;
     --slider-fill: #4A6DD9;
+
+
+    //upgrade
+    --upgrade-default: #FFAF41;
+    --upgrade-weak: #FFAF4140;
+
+    //box-shadow
+    --elevation-000-box-shadow: 0px 1px 0px 0px rgba(0, 0, 0, 0.40);
+    --elevation-100-box-shadow: 0px 1px 1px 0px #000, 0px 0px 1px 0px rgba(0, 0, 0, 0.90);
+    --elevation-200-box-shadow: 0px 2px 4px 0px #000, 0px 0px 1px 0px rgba(0, 0, 0, 0.90);
+    --elevation-300-box-shadow: 0px 4px 8px 0px #000, 0px 0px 1px 0px rgba(0, 0, 0, 0.90);
+    --elevation-400-box-shadow: 0px 8px 16px 0px #000, 0px 0px 1px 0px rgba(0, 0, 0, 0.90);
+    --elevation-500-box-shadow: 0px 16px 24px 0px rgba(0, 0, 0, 0.99), 0px 0px 1px 0px rgba(0, 0, 0, 0.90);
+    --elevation-600-box-shadow: 0px 24px 40px 0px rgba(0, 0, 0, 0.98), 0px 0px 1px 0px rgba(0, 0, 0, 0.90);
+    --elevation-700-box-shadow: 0px 32px 50px 0px rgba(0, 0, 0, 0.98), 0px 0px 1px 0px rgba(0, 0, 0, 0.90);
+    
 }

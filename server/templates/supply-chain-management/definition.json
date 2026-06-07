@@ -52547,8 +52547,8 @@
                             "globalSettings": {
                                 "hideHeader": true,
                                 "appInMaintenance": false,
-                                "canvasMaxWidth": "100000",
-                                "canvasMaxWidthType": "px",
+                                "canvasMaxWidth": "100",
+                                "canvasMaxWidthType": "%",
                                 "canvasMaxHeight": "1000",
                                 "canvasBackgroundColor": "",
                                 "backgroundFxQuery": ""
@@ -52557,8 +52557,8 @@
                         "globalSettings": {
                             "hideHeader": true,
                             "appInMaintenance": false,
-                            "canvasMaxWidth": "100000",
-                            "canvasMaxWidthType": "px",
+                            "canvasMaxWidth": "100",
+                            "canvasMaxWidthType": "%",
                             "canvasMaxHeight": "1000",
                             "canvasBackgroundColor": "",
                             "backgroundFxQuery": ""
@@ -116492,8 +116492,8 @@
                                 "globalSettings": {
                                     "hideHeader": true,
                                     "appInMaintenance": false,
-                                    "canvasMaxWidth": "100000",
-                                    "canvasMaxWidthType": "px",
+                                    "canvasMaxWidth": "100",
+                                    "canvasMaxWidthType": "%",
                                     "canvasMaxHeight": "1000",
                                     "canvasBackgroundColor": "",
                                     "backgroundFxQuery": ""
@@ -116502,8 +116502,8 @@
                             "globalSettings": {
                                 "hideHeader": true,
                                 "appInMaintenance": false,
-                                "canvasMaxWidth": "100000",
-                                "canvasMaxWidthType": "px",
+                                "canvasMaxWidth": "100",
+                                "canvasMaxWidthType": "%",
                                 "canvasMaxHeight": "1000",
                                 "canvasBackgroundColor": "",
                                 "backgroundFxQuery": ""

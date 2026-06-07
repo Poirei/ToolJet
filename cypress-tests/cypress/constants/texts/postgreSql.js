@@ -4,27 +4,31 @@ export const postgreSqlText = {
 
   allDataSources: () => {
     return Cypress.env("marketplace_action")
-      ? "All data sources (44)"
-      : "All data sources (41)";
+      ? "All data sources (45)"
+      : "All data sources (43)";
   },
   commonlyUsed: "Commonly used (5)",
   allDatabase: () => {
     return Cypress.env("marketplace_action")
       ? "Databases (20)"
-      : "Databases (17)";
+      : "Databases (18)";
   },
-  allApis: "APIs (20)",
+  allApis: "APIs (21)",
   allCloudStorage: "Cloud Storages (4)",
 
   postgreSQL: "PostgreSQL",
+  labelConnectionType: "Connection type",
+  manualConnectionOption: "Manual connection",
+  connectionStringOption: "Connection string",
   labelHost: "Host",
   labelPort: "Port",
   labelSSL: "SSL",
-  labelDbName: "Database Name",
+  labelDbName: "Database name",
   labelUserName: "Username",
   labelPassword: "Password",
-  label: "Encrypted",
-  sslCertificate: "SSL Certificate",
+  labelEncrypted: "Encrypted",
+  labelConnectionOptions: "Connection options",
+  sslCertificate: "SSL certificate",
   whiteListIpText:
     "Please white-list our IP address if the data source is not publicly accessible",
   textCopy: "Copy",
@@ -73,7 +77,9 @@ export const postgreSqlText = {
   yes: "Yes",
 
   guiOptionBulkUpdate: "Bulk update using primary key",
-  buttonTextTestConnection: "Test Connection",
+  buttonTextTestConnection: "Test connection",
+  editButtonText: "Edit",
+  unableAcquireConnectionAlertText: "Unable to acquire a connection",
 
   tabAdvanced: "Advanced",
   labelNoEventhandler: "No event handlers",

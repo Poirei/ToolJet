@@ -15,7 +15,7 @@ export const Statistics = function Statistics({ width, height, properties, style
 
   const baseStyle = {
     borderRadius: 4,
-    backgroundColor: darkMode ? '#47505D' : '#ffffff',
+    backgroundColor: 'var(--cc-surface1-surface)',
     alignItems: 'center',
     flexDirection: 'column',
     margin: '0px auto',
@@ -91,7 +91,7 @@ export const Statistics = function Statistics({ width, height, properties, style
           >
             {primaryValueLabel}
           </p>
-          <h2 style={primaryStyle}>{primaryValue}</h2>
+          <h2 style={primaryStyle}>{String(primaryValue)}</h2>
           {hideSecondary ? (
             ''
           ) : (

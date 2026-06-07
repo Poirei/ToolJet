@@ -1,6 +1,8 @@
 import React from 'react';
 // eslint-disable-next-line import/no-unresolved
 import { allSvgs } from '@tooljet/plugins/client';
+import AiBanner from '@/_ui/AiBanner';
+import LegacyBanner from '@/_ui/LegacyBanner';
 
 const Card = ({
   title,
@@ -10,10 +12,13 @@ const Card = ({
   width = 50,
   usePluginIcon = false,
   className,
+  cardClassName,
   titleClassName,
   actionButton,
   darkMode,
+  tags = [],
 }) => {
+
   const DisplayIcon = ({ src }) => {
     if (typeof src !== 'string') return;
 
@@ -29,22 +34,25 @@ const Card = ({
       const Icon = allSvgs[src];
       return <Icon style={{ height, width }} className="card-icon" />;
     }
-    return <img src={src} width={width} height={height} alt={title} />;
+    return <img src={src} width={width} height={height} alt={title} className="card-icon" />;
   };
 
   return (
     <div style={{ height: '112px', width: '164px' }} className={`col-md-2  mb-4 ${className}`}>
       <div
-        className="card"
+        className={`card ${cardClassName}`}
         role="button"
         onClick={(e) => {
           e.preventDefault();
           handleClick && handleClick();
         }}
         data-cy={`data-source-${String(title).toLocaleLowerCase()}`}
+        style={{ position: 'relative' }}
       >
+        {tags && tags.includes('legacy') && <LegacyBanner />}
         <div className="card-body">
-          <center>
+          {tags && tags.includes('AI') && <AiBanner className="card-tag" />}
+          <center style={{ marginTop: tags.includes('AI') ? '0px' : '15px' }}>
             <DisplayIcon src={src} />
             <br></br>
             <br></br>

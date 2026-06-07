@@ -1,33 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { isEqual } from 'lodash';
 import iframeContent from './iframe.html';
-
-import { useDataQueries } from '@/_stores/dataQueriesStore';
-import { useGridStore } from '@/_stores/gridStore';
-import { isQueryRunnable } from '@/_helpers/utils';
+import useStore from '@/AppBuilder/_stores/store';
 import { shallow } from 'zustand/shallow';
 
 export const CustomComponent = (props) => {
-  const { height, properties, styles, id, setExposedVariable, exposedVariables, fireEvent, dataCy, component } = props;
-  const dataQueries = useDataQueries();
-
-  const showPlaceholder = useGridStore((state) => {
-    const { resizingComponentId, draggingComponentId } = state;
-    if (
-      (resizingComponentId === null && draggingComponentId === id) ||
-      (draggingComponentId === null && resizingComponentId === id) ||
-      id === 'resizingComponentId'
-    ) {
-      return true;
-    }
-    return false;
-  }, shallow);
-
+  const { height, properties, styles, id, setExposedVariable, dataCy } = props;
+  const exposedVariables = useStore((state) => state.getExposedValueOfComponent(id), shallow);
+  const onEvent = useStore((state) => state.eventsSlice.onEvent, shallow);
   const { visibility, boxShadow } = styles;
   const { code, data } = properties;
   const [customProps, setCustomProps] = useState(data);
   const iFrameRef = useRef(null);
-  const dataQueryRef = useRef(dataQueries);
+  const messageEventListenerRef = useRef(null);
+
   const customPropRef = useRef(data);
 
   useEffect(() => {
@@ -42,7 +28,7 @@ export const CustomComponent = (props) => {
       sendMessageToIframe({ message: 'DATA_UPDATED' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setExposedVariable, customProps, exposedVariables.data]);
+  }, [customProps, exposedVariables.data]);
 
   useEffect(() => {
     sendMessageToIframe({ message: 'CODE_UPDATED' });
@@ -50,27 +36,17 @@ export const CustomComponent = (props) => {
   }, [code]);
 
   useEffect(() => {
-    dataQueryRef.current = dataQueries;
-  }, [dataQueries]);
-
-  useEffect(() => {
-    window.addEventListener('message', (e) => {
+    messageEventListenerRef.current = (e) => {
       try {
         if (e.data.from === 'customComponent' && e.data.componentId === id) {
           if (e.data.message === 'UPDATE_DATA') {
             setCustomProps({ ...customPropRef.current, ...e.data.updatedObj });
           } else if (e.data.message === 'RUN_QUERY') {
-            const filteredQuery = dataQueryRef.current.filter(
-              (query) => query.name === e.data.queryName && isQueryRunnable(query)
-            );
-            const parameters = e.data.parameters ? JSON.parse(e.data.parameters) : {};
-            filteredQuery.length === 1 &&
-              fireEvent('onTrigger', {
-                component,
-                queryId: filteredQuery[0].id,
-                queryName: filteredQuery[0].name,
-                parameters,
-              });
+            const options = {
+              parameters: JSON.parse(e.data.parameters),
+              queryName: e.data.queryName,
+            };
+            onEvent('onTrigger', [], options);
           } else {
             sendMessageToIframe(e.data);
           }
@@ -78,9 +54,33 @@ export const CustomComponent = (props) => {
       } catch (err) {
         console.log(err);
       }
-    });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    window.addEventListener('message', messageEventListenerRef.current);
+
+    // Cleanup function to remove event listener and cleanup iframe
+    return () => {
+      if (messageEventListenerRef.current) {
+        window.removeEventListener('message', messageEventListenerRef.current);
+        messageEventListenerRef.current = null;
+      }
+
+      // Send cleanup message to iframe
+      if (iFrameRef.current?.contentWindow) {
+        try {
+          iFrameRef.current.contentWindow.postMessage(
+            {
+              message: 'CLEANUP',
+              componentId: id,
+            },
+            '*'
+          );
+        } catch (err) {
+          console.log('Error during iframe cleanup:', err);
+        }
+      }
+    };
+  }, [id, onEvent]);
 
   const sendMessageToIframe = ({ message }) => {
     if (!iFrameRef.current) return;
@@ -90,7 +90,7 @@ export const CustomComponent = (props) => {
           {
             message: 'INIT_RESPONSE',
             componentId: id,
-            data: customProps,
+            data: customPropRef.current,
             code: code,
           },
           '*'
@@ -121,14 +121,12 @@ export const CustomComponent = (props) => {
 
   return (
     <div className="card" style={{ display: visibility ? '' : 'none', height, boxShadow }} data-cy={dataCy}>
-      {showPlaceholder ? null : (
-        <iframe
-          srcDoc={iframeContent}
-          style={{ width: '100%', height: '100%', border: 'none' }}
-          ref={iFrameRef}
-          data-id={id}
-        ></iframe>
-      )}
+      <iframe
+        srcDoc={iframeContent}
+        style={{ width: '100%', height: '100%', border: 'none' }}
+        ref={iFrameRef}
+        data-id={id}
+      ></iframe>
     </div>
   );
 };

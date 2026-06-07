@@ -1,7 +1,8 @@
 import { Knex, knex } from 'knex';
 import oracledb from 'oracledb';
 import {
-  cacheConnection,
+  cacheConnectionWithConfiguration,
+  generateSourceOptionsHash,
   getCachedConnection,
   ConnectionTestResult,
   QueryService,
@@ -90,12 +91,10 @@ export default class OracledbQueryService implements QueryService {
   }
 
   async buildConnection(sourceOptions: SourceOptions) {
-    // we should add this to our datasource documentation
     try {
-      oracledb.oracleClientVersion;
+      this.initOracleClient(sourceOptions.client_path_type, sourceOptions.path, sourceOptions.instant_client_version);
     } catch (err) {
       console.log('Oracle client is not initailized');
-      this.initOracleClient(sourceOptions.client_path_type, sourceOptions.path, sourceOptions.instant_client_version);
     }
 
     const config: Knex.Config = {
@@ -105,7 +104,7 @@ export default class OracledbQueryService implements QueryService {
         password: sourceOptions.password,
         connectString: `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${sourceOptions.host})(PORT=${sourceOptions.port}))(CONNECT_DATA=(SERVER=DEDICATED)(${sourceOptions.database_type}=${sourceOptions.database})))`,
         multipleStatements: true,
-        ssl: sourceOptions.ssl_enabled, // Disabling by default for backward compatibility
+        ssl: sourceOptions.ssl_enabled,
       },
     };
 
@@ -120,13 +119,15 @@ export default class OracledbQueryService implements QueryService {
     dataSourceUpdatedAt?: string
   ): Promise<any> {
     if (checkCache) {
-      let connection = await getCachedConnection(dataSourceId, dataSourceUpdatedAt);
+      const optionsHash = generateSourceOptionsHash(sourceOptions);
+      const enhancedCacheKey = `${dataSourceId}_${optionsHash}`;
+      let connection = await getCachedConnection(enhancedCacheKey, dataSourceUpdatedAt);
 
       if (connection) {
         return connection;
       } else {
         connection = await this.buildConnection(sourceOptions);
-        dataSourceId && cacheConnection(dataSourceId, connection);
+        cacheConnectionWithConfiguration(dataSourceId, enhancedCacheKey, connection);
         return connection;
       }
     } else {

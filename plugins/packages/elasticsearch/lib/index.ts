@@ -1,6 +1,19 @@
 import { ConnectionTestResult, QueryService, QueryResult, QueryError } from '@tooljet-plugins/common';
-import { getDocument, updateDocument } from './operations';
-import { indexDocument, search } from './operations';
+import {
+  getDocument,
+  updateDocument,
+  indexDocument,
+  search,
+  deleteDocument,
+  bulkOperation,
+  countDocuments,
+  documentExists,
+  multiGet,
+  scrollSearch,
+  clearScroll,
+  getCatIndices,
+  getClusterHealth,
+} from './operations';
 import { Client, ClientOptions } from '@opensearch-project/opensearch';
 import { SourceOptions, QueryOptions } from './types';
 
@@ -13,7 +26,7 @@ export default class ElasticsearchService implements QueryService {
     try {
       switch (operation) {
         case 'search':
-          result = await search(client, queryOptions.index, queryOptions.query);
+          result = await search(client, queryOptions.index, queryOptions.query, queryOptions.scroll);
           break;
         case 'index_document':
           result = await indexDocument(client, queryOptions.index, queryOptions.body);
@@ -24,6 +37,35 @@ export default class ElasticsearchService implements QueryService {
         case 'update':
           result = await updateDocument(client, queryOptions.index, queryOptions.id, queryOptions.body);
           break;
+        case 'delete':
+          result = await deleteDocument(client, queryOptions.index, queryOptions.id);
+          break;
+        case 'bulk':
+          result = await bulkOperation(client, queryOptions.operations);
+          break;
+        case 'count':
+          result = await countDocuments(client, queryOptions.index, queryOptions.query);
+          break;
+        case 'exists':
+          result = await documentExists(client, queryOptions.index, queryOptions.id);
+          break;
+        case 'mget':
+          result = await multiGet(client, queryOptions.operations);
+          break;
+        case 'scroll':
+          result = await scrollSearch(client, queryOptions.scroll_id, queryOptions.scroll);
+          break;
+        case 'clear_scroll':
+          result = await clearScroll(client, queryOptions.scroll_id);
+          break;
+        case 'cat_indices':
+          result = await getCatIndices(client);
+          break;
+        case 'cluster_health':
+          result = await getClusterHealth(client);
+          break;
+        default:
+          throw new Error(`Unsupported operation: ${operation}`);
       }
     } catch (err) {
       console.log(err);
@@ -37,12 +79,17 @@ export default class ElasticsearchService implements QueryService {
   }
 
   async testConnection(sourceOptions: SourceOptions): Promise<ConnectionTestResult> {
-    const client = await this.getConnection(sourceOptions);
-    await client.info();
-
-    return {
-      status: 'ok',
-    };
+    try {
+      const client = await this.getConnection(sourceOptions);
+      await client.info();
+      return {
+        status: 'ok',
+        message: 'Connection successful',
+      };
+    } catch (err: any) {
+      const errorMessage = err || 'Unknown error';
+      throw new QueryError(errorMessage, err, {});
+    }
   }
 
   determineProtocol(sourceOptions: SourceOptions) {
@@ -74,7 +121,10 @@ export default class ElasticsearchService implements QueryService {
       url = `${protocol}://${host}:${port}`;
     }
 
-    const options: ClientOptions = { node: url };
+    const options: ClientOptions = { 
+      node: url,
+      requestTimeout: 10000,
+    };
 
     if (sslEnabled) {
       if (sslCertificate === 'ca_certificate') {

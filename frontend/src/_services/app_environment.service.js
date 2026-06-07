@@ -5,13 +5,29 @@ import queryString from 'query-string';
 export const appEnvironmentService = {
   getAllEnvironments,
   getVersionsByEnvironment,
+  getEnvironment,
   init,
   postVersionDeleteAction,
+  postEnvironmentChangedAction,
 };
 
-function getAllEnvironments() {
+/* This endpoint now only will work with viewer. For Editor we may need to do some logic changes in backend code */
+function getEnvironment(id, queryParams) {
   const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
-  return fetch(`${config.apiUrl}/app-environments`, requestOptions).then(handleResponse);
+  const query = queryString.stringify(queryParams);
+  return fetch(
+    `${config.apiUrl}/app-environments/${id ? id : 'default'}${query && !id ? `?${query}` : ''}`,
+    requestOptions
+  ).then(handleResponse);
+}
+
+function getAllEnvironments(appId) {
+  let apiURL = `${config.apiUrl}/app-environments`;
+  if (appId) {
+    apiURL = `${config.apiUrl}/app-environments?app_id=${appId}`;
+  }
+  const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
+  return fetch(apiURL, requestOptions).then(handleResponse);
 }
 
 /* 
@@ -32,9 +48,9 @@ function getVersionsByEnvironment(appId, environmentId /* not needed for CE */) 
   ).then(handleResponse);
 }
 
-function init(editing_version_id = null) {
+function init(editing_version_id = null, env = null) {
   const requestOptions = { method: 'GET', headers: authHeader(), credentials: 'include' };
-  const query = queryString.stringify({ editing_version_id });
+  const query = queryString.stringify({ editing_version_id, env });
   return fetch(`${config.apiUrl}/app-environments/init?${query}`, requestOptions).then(handleResponse);
 }
 
@@ -46,4 +62,16 @@ function postVersionDeleteAction(actionParams = {}) {
     credentials: 'include',
   };
   return fetch(`${config.apiUrl}/app-environments/post-action/version_deleted`, requestOptions).then(handleResponse);
+}
+
+function postEnvironmentChangedAction(actionParams = {}) {
+  const requestOptions = {
+    method: 'POST',
+    body: JSON.stringify(actionParams),
+    headers: authHeader(),
+    credentials: 'include',
+  };
+  return fetch(`${config.apiUrl}/app-environments/post-action/environment_changed`, requestOptions).then(
+    handleResponse
+  );
 }

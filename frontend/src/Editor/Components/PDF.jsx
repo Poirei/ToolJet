@@ -4,9 +4,11 @@ import { Document, Page } from 'react-pdf/dist/esm/entry.webpack';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css'; // Required to fix duplicate text appearing at the bottom from the previous page
 import { debounce } from 'lodash';
+import PasswordResponses from 'react-pdf/dist/cjs/PasswordResponses';
+require('pdfjs-dist/build/pdf.worker.entry.js');
+// The above line is required to fix the issue of pdf becoming black when resizing
 
-export const PDF = React.memo(({ styles, properties, width, height, component, dataCy }) => {
-  const pdfName = component.name;
+export const PDF = React.memo(({ styles, properties, width, height, componentName, dataCy }) => {
   const { visibility, boxShadow } = styles;
   const { url, scale, pageControls, showDownloadOption } = properties;
   const [numPages, setNumPages] = useState(null);
@@ -17,6 +19,7 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
   const [error, setError] = useState(true);
   const [pageLoading, setPageLoading] = useState(true);
   const [hasButtonClicked, setButtonClick] = useState(false);
+  const [isPasswordPromptClosed, setIsPasswordPromptClosed] = useState(false);
 
   const onDocumentLoadSuccess = async (document) => {
     const { numPages: nextNumPages } = document;
@@ -60,6 +63,10 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [numPages, options]);
 
+  useEffect(() => {
+    setIsPasswordPromptClosed(false);
+  }, [url]);
+
   const updatePage = useCallback(
     (offset) => {
       const { offsetTop } = pageRef.current[pageNumber + offset - 1];
@@ -72,7 +79,7 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
 
   // styles for download icon
   const downloadIconOuterWrapperStyles = {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--cc-surface1-surface)',
     borderRadius: '4px',
     height: '36px',
     padding: '0.5rem',
@@ -82,25 +89,74 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
     width: '15px',
     height: '15px',
   };
-  const renderPDF = () => (
-    <Document
-      file={url}
-      onLoadSuccess={onDocumentLoadSuccess}
-      onLoadError={onDocumentLoadError}
-      className="pdf-document"
-    >
-      {Array.from(new Array(numPages), (el, index) => (
-        <Page
-          pageNumber={index + 1}
-          width={scale ? width - 12 : undefined}
-          height={scale ? undefined : height}
-          key={`page_${index + 1}`}
-          inputRef={(el) => (pageRef.current[index] = el)}
-        />
-      ))}
-    </Document>
-  );
 
+  function onPassword(callback, reason) {
+    function callbackProxy(password) {
+      setIsPasswordPromptClosed(false);
+      if (password === null) {
+        setIsPasswordPromptClosed(true);
+        return;
+      }
+
+      callback(password);
+    }
+
+    switch (reason) {
+      case PasswordResponses.NEED_PASSWORD: {
+        const password = prompt('Enter the password to open this PDF file.');
+        callbackProxy(password);
+        break;
+      }
+      case PasswordResponses.INCORRECT_PASSWORD: {
+        const password = prompt('Invalid password. Please try again.');
+        callbackProxy(password);
+        break;
+      }
+      default:
+    }
+  }
+
+  const renderPDF = () => {
+    if (isPasswordPromptClosed)
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+          <p style={{ marginBottom: '6px' }}>Password prompt closed</p>
+          <button
+            class="pdf-retry-button"
+            data-cy="draggable-widget-button3"
+            type="default"
+            onClick={() => setIsPasswordPromptClosed(false)}
+          >
+            <div>
+              <div>
+                <span>
+                  <p class="tj-text-sm">Retry</p>
+                </span>
+              </div>
+            </div>
+          </button>
+        </div>
+      );
+    return (
+      <Document
+        file={url}
+        onLoadSuccess={onDocumentLoadSuccess}
+        onLoadError={onDocumentLoadError}
+        onPassword={onPassword}
+        className="pdf-document"
+      >
+        {Array.from(new Array(numPages), (el, index) => (
+          <Page
+            pageNumber={index + 1}
+            width={scale ? width - 12 : undefined}
+            height={scale ? undefined : height}
+            key={`page_${index + 1}`}
+            inputRef={(el) => (pageRef.current[index] = el)}
+          />
+        ))}
+      </Document>
+    );
+  };
   async function downloadFile(url, pdfName) {
     const pdf = await fetch(url);
     const pdfBlog = await pdf.blob();
@@ -137,7 +193,8 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
           <div
             className={`d-flex ${
               pageControls ? 'justify-content-between' : 'justify-content-end'
-            } py-3 px-3 align-items-baseline bg-white border-top border-light`}
+            } py-3 px-3 align-items-baseline border-top border-light`}
+            style={{ backgroundColor: 'var(--cc-surface1-surface)', color: 'var(--cc-primary-text)' }}
           >
             {pageControls && (
               <>
@@ -147,6 +204,7 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
                     onClick={() => updatePage(-1)}
                     type="button"
                     aria-label="Previous page"
+                    style={{ backgroundColor: 'var(--cc-surface1-surface)' }}
                   >
                     ‹
                   </button>
@@ -158,6 +216,7 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
                     onClick={() => updatePage(1)}
                     type="button"
                     aria-label="Next page"
+                    style={{ backgroundColor: 'var(--cc-surface1-surface)' }}
                   >
                     ›
                   </button>
@@ -168,7 +227,7 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
               <div
                 className="download-icon-outer-wrapper text-dark"
                 style={downloadIconOuterWrapperStyles}
-                onClick={() => downloadFile(url, pdfName)}
+                onClick={() => downloadFile(url, componentName)}
               >
                 <img
                   src="assets/images/icons/download.svg"
@@ -176,7 +235,9 @@ export const PDF = React.memo(({ styles, properties, width, height, component, d
                   style={downloadIconImgStyle}
                   className="mx-1"
                 />
-                <span className="mx-1">Download PDF</span>
+                <span className="mx-1" style={{ color: 'var(--cc-primary-text)' }}>
+                  Download PDF
+                </span>
               </div>
             )}
           </div>

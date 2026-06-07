@@ -1,8 +1,11 @@
 /* eslint-disable react/no-string-refs */
 import React from 'react';
-import { Editor, EditorState, RichUtils, getDefaultKeyBinding, ContentState } from 'draft-js';
+import { Editor, EditorState, RichUtils, getDefaultKeyBinding } from 'draft-js';
 import 'draft-js/dist/Draft.css';
+import { stateFromHTML } from 'draft-js-import-html';
 import { stateToHTML } from 'draft-js-export-html';
+import Loader from '@/ToolJetUI/Loader/Loader';
+import DOMPurify from 'dompurify';
 
 // Custom overrides for "code" style.
 const styleMap = {
@@ -85,7 +88,7 @@ const BlockStyleControls = (props) => {
         <button className="dropdownbtn px-2" type="button">
           Heading
         </button>
-        <div className="dropdown-content bg-white">
+        <div className="dropdown-content" style={{ backgroundColor: 'var(--cc-surface1-surface)' }}>
           {HEADINGS.map((type) => (
             <a className="dropitem m-0 p-0" key={type.label}>
               <StyleButton
@@ -149,8 +152,11 @@ class DraftEditor extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      editorState: EditorState.createWithContent(ContentState.createFromText(this.props.defaultValue)),
+      editorState: EditorState.createWithContent(stateFromHTML(DOMPurify.sanitize(this.props.defaultValue))),
     };
+
+    this.editorContainerRef = React.createRef();
+    this.controlsRef = React.createRef();
 
     this.focus = () => this.refs.editor.focus();
     this.onChange = (editorState) => {
@@ -167,13 +173,62 @@ class DraftEditor extends React.Component {
 
   componentDidUpdate(prevProps) {
     if (prevProps.defaultValue !== this.props.defaultValue) {
-      const newContentState = ContentState.createFromText(this.props.defaultValue);
+      const newContentState = stateFromHTML(DOMPurify.sanitize(this.props.defaultValue));
       const newEditorState = EditorState.createWithContent(newContentState);
-      const newEditorStateWithFocus = EditorState.moveFocusToEnd(newEditorState);
       const html = stateToHTML(newContentState);
 
       this.props.handleChange(html);
-      this.setState({ editorState: newEditorStateWithFocus });
+
+      this.setState({ editorState: newEditorState });
+    }
+  }
+
+  componentDidMount() {
+    //For resizing the editor container based on the height of rich text editor controls
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.controlsRef.current && this.editorContainerRef.current) {
+        const controlsHeight = this.controlsRef.current.offsetHeight;
+        const editorHeight = this.props.height - 46 - controlsHeight;
+        this.editorContainerRef.current.style.height = `${editorHeight}px`;
+      }
+    });
+
+    if (this.controlsRef.current) {
+      this.resizeObserver.observe(this.controlsRef.current);
+    }
+
+    const exposedVariables = {
+      value: this.props.defaultValue,
+      isDisabled: this.props.isDisabled,
+      isVisible: this.props.isVisible,
+      isLoading: this.props.isLoading,
+      setValue: async (text) => {
+        const newContentState = stateFromHTML(DOMPurify.sanitize(text));
+        const newEditorState = EditorState.createWithContent(newContentState);
+        const html = stateToHTML(newContentState);
+        this.props.handleChange(html);
+        this.setState({ editorState: newEditorState });
+      },
+      setDisable: async (value) => {
+        this.props.setExposedVariable('isDisabled', !!value);
+        this.props.setIsDisabled(!!value);
+      },
+      setVisibility: async (value) => {
+        this.props.setExposedVariable('isVisible', !!value);
+        this.props.setIsVisible(!!value);
+      },
+      setLoading: async (value) => {
+        this.props.setExposedVariable('isLoading', !!value);
+        this.props.setIsLoading(!!value);
+      },
+    };
+    this.props.setExposedVariables(exposedVariables);
+    this.props.isInitialRender.current = false;
+  }
+
+  componentWillUnmount() {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
     }
   }
 
@@ -218,13 +273,24 @@ class DraftEditor extends React.Component {
       }
     }
 
-    return (
-      <div className="RichEditor-root">
-        <div className="RichEditor-controls">
+    return this.props.isLoading ? (
+      <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <center>
+          <Loader width="16" absolute={false} />
+        </center>
+      </div>
+    ) : (
+      <div className="RichEditor-root" style={{ overflowY: 'scroll', scrollbarWidth: 'none' }}>
+        <div className="RichEditor-controls" ref={this.controlsRef}>
           <BlockStyleControls editorState={editorState} onToggle={this.toggleBlockType} />
           <InlineStyleControls editorState={editorState} onToggle={this.toggleInlineStyle} />
         </div>
-        <div className={className} style={{ height: `${this.props.height - 60}px` }} onClick={this.focus}>
+        <div
+          className={className}
+          ref={this.editorContainerRef}
+          style={{ height: this.props.dynamicHeight ? 'auto' : `${this.props.height - 60}px` }}
+          onClick={this.focus}
+        >
           <Editor
             blockStyleFn={getBlockStyle}
             customStyleMap={styleMap}
@@ -232,7 +298,13 @@ class DraftEditor extends React.Component {
             handleKeyCommand={this.handleKeyCommand}
             keyBindingFn={this.mapKeyToEditorCommand}
             onChange={this.onChange}
-            placeholder={this.props.placeholder}
+            placeholder={
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(this.props.placeholder || ''),
+                }}
+              />
+            }
             ref="editor"
             spellCheck={true}
           />

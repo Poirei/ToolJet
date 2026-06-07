@@ -1,5 +1,5 @@
 /* eslint-disable import/no-unresolved */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { okaidia } from '@uiw/codemirror-theme-okaidia';
 import { githubLight } from '@uiw/codemirror-theme-github';
@@ -8,6 +8,8 @@ import { python } from '@codemirror/lang-python';
 import { sql } from '@codemirror/lang-sql';
 import { sass } from '@codemirror/lang-sass';
 import { debounce } from 'lodash';
+import { useDynamicHeight } from '@/_hooks/useDynamicHeight';
+import './codeEditor.scss';
 
 const langSupport = Object.freeze({
   javascript: javascript(),
@@ -17,16 +19,40 @@ const langSupport = Object.freeze({
   css: sass(),
 });
 
-export const CodeEditor = ({ height, darkMode, properties, styles, exposedVariables, setExposedVariable, dataCy }) => {
-  const { enableLineNumber, mode, placeholder } = properties;
+export const CodeEditor = ({
+  id,
+  height,
+  darkMode,
+  properties,
+  styles,
+  setExposedVariable,
+  dataCy,
+  adjustComponentPositions,
+  currentLayout,
+  width,
+}) => {
+  const { enableLineNumber, mode, placeholder, dynamicHeight } = properties;
   const { visibility, disabledState } = styles;
+  const [forceDynamicHeightUpdate, setForceDynamicHeightUpdate] = useState(false);
+  const [value, setValue] = useState('');
+
+  useDynamicHeight({
+    dynamicHeight,
+    id,
+    height,
+    value: forceDynamicHeightUpdate,
+    adjustComponentPositions,
+    currentLayout,
+    width,
+    visibility,
+  });
 
   const codeChanged = debounce((code) => {
     setExposedVariable('value', code);
   }, 500);
 
   const editorStyles = {
-    height: height,
+    height: dynamicHeight ? 'auto' : height,
     display: !visibility ? 'none' : 'block',
   };
 
@@ -43,40 +69,56 @@ export const CodeEditor = ({ height, darkMode, properties, styles, exposedVariab
   };
 
   const theme = darkMode ? okaidia : githubLight;
-  const langExtention = langSupport[mode?.toLowerCase()] ?? null;
-
+  const langExtention = langSupport?.[mode?.toLowerCase()];
+  
   const editorHeight = React.useMemo(() => {
-    return height || 'auto';
-  }, [height]);
+    return dynamicHeight ? 'auto' : height || 'auto';
+  }, [height, dynamicHeight]);
+
+  useEffect(() => {
+    const _setValue = (value) => {
+      if (typeof value === 'string') {
+        codeChanged(value);
+        setValue(value);
+      }
+    };
+    setExposedVariable('setValue', _setValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div data-disabled={disabledState} style={editorStyles} data-cy={dataCy}>
       <div
-        className={`code-hinter codehinter-default-input code-editor-widget`}
+        className={`code-hinter codehinter-default-input code-editor-widget scrollbar-container`}
         style={{
-          height: height || 'auto',
-          minHeight: height - 1,
-          // maxHeight: '320px',
-          overflow: 'auto',
+          height: dynamicHeight ? 'auto' : height || 'auto',
+          ...(dynamicHeight
+            ? { minHeight: '0', maxHeight: '100%' }
+            : { minHeight: height - 1, maxHeight: '320px', overflow: 'auto' }),
+
           borderRadius: `${styles.borderRadius}px`,
           boxShadow: styles.boxShadow,
         }}
       >
         <CodeMirror
-          value={exposedVariables.value}
+          value={value}
           placeholder={placeholder}
           height={'100%'}
-          minHeight={editorHeight}
-          maxHeight="100%"
+          minHeight={dynamicHeight ? 'none' : editorHeight}
+          maxHeight={dynamicHeight ? 'none' : editorHeight}
           width="100%"
           theme={theme}
-          extensions={[langExtention]}
-          onChange={codeChanged}
+          extensions={[langExtention ?? javascript()]}
+          onChange={(value) => {
+            setValue(value);
+            codeChanged(value);
+            setForceDynamicHeightUpdate(!forceDynamicHeightUpdate);
+          }}
           basicSetup={setupConfig}
           style={{
-            overflowY: 'auto',
+            ...(dynamicHeight ? {} : { overflowY: 'auto' }),
           }}
-          className={`codehinter-multi-line-input`}
+          className={`codehinter-multi-line-input code-editor-component`}
           indentWithTab={true}
         />
       </div>

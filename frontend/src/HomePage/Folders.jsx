@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useContext } from 'react';
 import cx from 'classnames';
-import { folderService } from '@/_services';
+import { folderService, authenticationService } from '@/_services';
 import { toast } from 'react-hot-toast';
 import Modal from './Modal';
 import { FolderMenu } from './FolderMenu';
 import { ConfirmDialog, ToolTip } from '@/_components';
 import { useTranslation } from 'react-i18next';
-import Skeleton from 'react-loading-skeleton';
 import SolidIcon from '@/_ui/Icon/SolidIcons';
 import { BreadCrumbContext } from '@/App/App';
 import { ButtonSolid } from '@/_ui/AppButton/AppButton';
 import { SearchBox } from '@/_components/SearchBox';
 import _ from 'lodash';
 import { validateName, handleHttpErrorMessages, getWorkspaceId } from '@/_helpers/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import FolderSkeleton from '@/_ui/FolderSkeleton/FolderSkeleton';
+import { Button } from '@/components/ui/Button/Button';
+import posthogHelper from '@/modules/common/helpers/posthogHelper';
 
 export const Folders = function Folders({
   folders,
@@ -26,6 +28,7 @@ export const Folders = function Folders({
   canDeleteFolder,
   canCreateApp,
   darkMode,
+  appType,
 }) {
   const [isLoading, setLoadingStatus] = useState(foldersLoading);
   const [showInput, setShowInput] = useState(false);
@@ -42,10 +45,10 @@ export const Folders = function Folders({
   const [filteredData, setFilteredData] = useState(folders);
   const [errorText, setErrorText] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { t } = useTranslation();
   const { updateSidebarNAV } = useContext(BreadCrumbContext);
-
   useEffect(() => {
     setLoadingStatus(foldersLoading);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -57,15 +60,14 @@ export const Folders = function Folders({
   }, [folders]);
 
   useEffect(() => {
-    if (_.isEmpty(currentFolder)) {
-      updateSidebarNAV('All apps');
-      setActiveFolder({});
-    } else {
-      updateSidebarNAV(currentFolder.name);
-      setActiveFolder(currentFolder);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFolder]);
+    const noFolder = !currentFolder || _.isEmpty(currentFolder);
+    const label = noFolder
+      ? `All ${appType === 'workflow' ? 'workflows' : appType === 'module' ? 'modules' : 'apps'}`
+      : currentFolder.name;
+
+    updateSidebarNAV(label);
+    setActiveFolder(currentFolder || {});
+  }, [appType, currentFolder, location.pathname]);
 
   const handleSearch = (e) => {
     const value = e?.target?.value;
@@ -74,7 +76,7 @@ export const Folders = function Folders({
   };
 
   function saveFolder() {
-    const newName = newFolderName?.trim();
+    const newName = newFolderName?.trim().replace(/\s+/g, ' ');
     if (!newName) {
       setErrorText("Folder name can't be empty");
       return;
@@ -82,14 +84,20 @@ export const Folders = function Folders({
     if (!errorText) {
       setCreationStatus(true);
       folderService
-        .create(newName)
-        .then(() => {
+        .create(newName, appType)
+        .then((data) => {
           toast.success('Folder created.');
           setCreationStatus(false);
           setShowForm(false);
           setNewFolderName('');
           handleFolderChange({});
           foldersChanged();
+          posthogHelper.captureEvent('create_folder', {
+            workspace_id:
+              authenticationService?.currentUserValue?.organization_id ||
+              authenticationService?.currentSessionValue?.current_organization_id,
+            folder_id: data?.id,
+          });
         })
         .catch((error) => {
           handleHttpErrorMessages(error, 'folder');
@@ -98,6 +106,10 @@ export const Folders = function Folders({
     }
   }
 
+  const getDefaultLabel = () => {
+    return `All ${appType === 'workflow' ? 'workflows' : appType === 'module' ? 'modules' : 'apps'}`;
+  };
+
   function handleFolderChange(folder) {
     if (_.isEmpty(folder)) {
       setActiveFolder({});
@@ -105,14 +117,22 @@ export const Folders = function Folders({
       setActiveFolder(folder);
     }
     folderChanged(folder);
-    updateSidebarNAV(folder?.name ?? 'All apps');
+    updateSidebarNAV(updateSidebarNAV(folder?.name ?? getDefaultLabel()));
     //update the url query parameter with folder name
     updateFolderQuery(folder?.name);
   }
 
   function updateFolderQuery(name) {
     const search = `${name ? `?folder=${name}` : ''}`;
-    navigate({ pathname: `/${getWorkspaceId()}`, search }, { replace: true });
+    navigate(
+      {
+        pathname: `/${getWorkspaceId()}${
+          appType === 'workflow' ? '/workflows' : appType === 'module' ? '/modules' : ''
+        }`,
+        search,
+      },
+      { replace: true }
+    );
   }
 
   function deleteFolder(folder) {
@@ -150,7 +170,7 @@ export const Folders = function Folders({
   }
 
   function executeEditFolder() {
-    const folderName = newFolderName?.trim();
+    const folderName = newFolderName?.trim().replace(/\s+/g, ' ');
     if (folderName === updatingFolder?.name) {
       setUpdationStatus(false);
       setShowUpdateForm(false);
@@ -235,24 +255,41 @@ export const Folders = function Folders({
             <div className="d-flex folder-header-icons-wrap">
               {canCreateFolder && (
                 <>
-                  <div
-                    className="folder-create-btn"
+                  <Button
+                    size="medium"
+                    variant="ghost"
+                    iconOnly
+                    ariaLabel="Create new folder"
                     onClick={() => {
+                      posthogHelper.captureEvent('create_new_folder', {
+                        workspace_id:
+                          authenticationService?.currentUserValue?.organization_id ||
+                          authenticationService?.currentSessionValue?.current_organization_id,
+                      });
                       setNewFolderName('');
                       setShowForm(true);
                     }}
                     data-cy="create-new-folder-button"
                   >
-                    <SolidIcon name="plus" width="14" fill={darkMode ? '#ECEDEE' : '#11181C'} />
-                  </div>
-                  <div
-                    className="folder-create-btn"
+                    <SolidIcon name="plus" width="14" fill={darkMode ? '#CFD3D8E6' : '#6A727C'} />
+                  </Button>
+                  <Button
+                    size="medium"
+                    variant="ghost"
+                    iconOnly
+                    ariaLabel="Search for folders"
                     onClick={() => {
                       setShowInput(true);
                     }}
+                    data-cy="folder-search-icon"
                   >
-                    <SolidIcon name="search" width="14" fill={darkMode ? '#ECEDEE' : '#11181C'} />
-                  </div>
+                    <SolidIcon
+                      name="search"
+                      width="14"
+                      fill={darkMode ? '#CFD3D8E6' : '#6A727C'}
+                      className="tw-relative tw-top-[2px]"
+                    />
+                  </Button>
                 </>
               )}
             </div>
@@ -262,7 +299,7 @@ export const Folders = function Folders({
             dataCy={`query-manager`}
             width="248px"
             callBack={handleSearch}
-            placeholder={'search for folders'}
+            placeholder={'Search for folders'}
             customClass="tj-common-search-input"
             onClearCallback={handleClose}
             autoFocus={true}
@@ -276,19 +313,25 @@ export const Folders = function Folders({
             className={cx(
               `list-group-item border-0 list-group-item-action d-flex align-items-center all-apps-link tj-text-xsm`,
               {
-                'bg-light-indigo': _.isEmpty(activeFolder) && !darkMode,
-                'bg-dark-indigo': _.isEmpty(activeFolder) && darkMode,
+                'tw-bg-interactive-default': _.isEmpty(activeFolder),
               }
             )}
             style={{ height: '32px' }}
             onClick={() => handleFolderChange({})}
-            data-cy="all-applications-link"
+            data-cy={`all-${
+              appType === 'workflow' ? 'workflows' : appType === 'module' ? 'modules' : 'applications'
+            }-link`}
           >
-            {t('homePage.foldersSection.allApplications', 'All apps')}
+            {appType === 'module'
+              ? 'All modules'
+              : t(
+                  `${appType === 'workflow' ? 'workflowsDashboard' : 'homePage'}.foldersSection.allApplications`,
+                  'All apps'
+                )}
           </a>
         </div>
       )}
-      {isLoading && <Skeleton count={3} height={22} className="mb-1" />}
+      {isLoading && <FolderSkeleton />}
       {!isLoading &&
         filteredData &&
         filteredData.length > 0 &&
@@ -298,11 +341,12 @@ export const Folders = function Folders({
             className={cx(
               `folder-list-group-item rounded-2 list-group-item h-4 mb-1 list-group-item-action no-border d-flex align-items-center`,
               {
-                'bg-light-indigo': activeFolder.id === folder.id && !darkMode,
-                'bg-dark-indigo': activeFolder.id === folder.id && darkMode,
+                'tw-bg-interactive-default': activeFolder.id === folder.id,
               }
             )}
-            onClick={() => handleFolderChange(folder)}
+            onClick={() => {
+              handleFolderChange(folder);
+            }}
             data-cy={`${folder.name.toLowerCase().replace(/\s+/g, '-')}-list-card`}
           >
             <ToolTip message={folder.name}>
@@ -314,14 +358,20 @@ export const Folders = function Folders({
               </div>
             </ToolTip>
             {(canDeleteFolder || canUpdateFolder) && (
-              <FolderMenu
-                canDeleteFolder={canDeleteFolder}
-                canUpdateFolder={canUpdateFolder}
-                deleteFolder={() => deleteFolder(folder)}
-                editFolder={() => updateFolder(folder)}
-                darkMode={darkMode}
-                dataCy={folder.name}
-              />
+              <div
+                onClick={(e) => {
+                  e.stopPropagation(); // Stop the click event from bubbling up to the <a> tag
+                }}
+              >
+                <FolderMenu
+                  canDeleteFolder={canDeleteFolder}
+                  canUpdateFolder={canUpdateFolder}
+                  deleteFolder={() => deleteFolder(folder)}
+                  editFolder={() => updateFolder(folder)}
+                  darkMode={darkMode}
+                  dataCy={folder.name}
+                />
+              </div>
             )}
           </a>
         ))}
@@ -361,6 +411,9 @@ export const Folders = function Folders({
               onClick={showUpdateForm ? executeEditFolder : saveFolder}
               data-cy={`${showUpdateForm ? 'update-folder' : 'create-folder'}-button`}
               isLoading={isCreating || isUpdating}
+              disabled={!!errorText || // Disabled if there's a validation error
+              (showUpdateForm && newFolderName.trim() === updatingFolder?.name) ||
+              (!showUpdateForm && newFolderName.trim() === '')}
             >
               {showUpdateForm
                 ? t('homePage.foldersSection.editFolder', 'Edit Folder')

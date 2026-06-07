@@ -5,7 +5,7 @@ import { handleHttpErrorMessages, validateName } from '@/_helpers/utils';
 import InfoOrErrorBox from './InfoOrErrorBox';
 import { toast } from 'react-hot-toast';
 
-function EditAppName({ appId, appName = '', onNameChanged }) {
+function EditAppName({ appId, appName = '', onNameChanged, appCreationMode, pageType }) {
   const darkMode = localStorage.getItem('darkMode') === 'true';
   const [name, setName] = useState(appName);
   const [isValid, setIsValid] = useState(true);
@@ -103,6 +103,9 @@ function EditAppName({ appId, appName = '', onNameChanged }) {
     ? 'var(--dark-border-color, #2D3748)' // Change this to the appropriate dark border color
     : 'var(--light-border-color, #FFF0EE)';
 
+  // Define the message based on the pageType prop
+  const messageType = pageType === 'workflow' ? 'Workflow' : 'App';
+
   return (
     <div className={`app-name input-icon ${darkMode ? 'dark' : ''}`}>
       <ToolTip message={name} placement="bottom" isVisible={!isEditing}>
@@ -136,7 +139,9 @@ function EditAppName({ appId, appName = '', onNameChanged }) {
         message={
           errorMessage ||
           warningText ||
-          (name.length >= 50 ? 'Maximum length has been reached' : 'App name should be unique and max 50 characters')
+          (name.length >= 50
+            ? 'Maximum length has been reached'
+            : `${messageType} name should be unique and max 50 characters`)
         }
         isWarning={warningText || name.length >= 50}
         isError={isError}

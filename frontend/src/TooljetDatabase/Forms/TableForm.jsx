@@ -12,6 +12,8 @@ import { ConfirmDialog } from '@/_components';
 import { serialDataType } from '../constants';
 import cx from 'classnames';
 import { deepClone } from '@/_helpers/utilities/utils.helpers';
+import posthogHelper from '@/modules/common/helpers/posthogHelper';
+import { authenticationService } from '@/_services';
 
 const TableForm = ({
   selectedTable = {},
@@ -35,12 +37,34 @@ const TableForm = ({
   const selectedTableColumnDetails = Object.values(selectedTableColumns);
   const darkMode = localStorage.getItem('darkMode') === 'true';
 
+  //Following state and handleInputError is to disable footer if JSON value is invalid for JSON column type
+  const [disabledCreateButton, setDisabledCreateButton] = useState(false);
+  const handleInputError = (bool = false) => {
+    setDisabledCreateButton(bool);
+  };
+
   const [fetching, setFetching] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [createForeignKeyInEdit, setCreateForeignKeyInEdit] = useState(false);
   const [tableName, setTableName] = useState(selectedTable.table_name);
-  const [columns, setColumns] = useState(deepClone(selectedTableColumns));
-  const { organizationId, foreignKeys, setForeignKeys } = useContext(TooljetDatabaseContext);
+  const { organizationId, foreignKeys, setForeignKeys, configurations } = useContext(TooljetDatabaseContext);
+
+  const [columns, setColumns] = useState(
+    (() => {
+      const clonedColumns = _.cloneDeep(selectedTableColumns) || {};
+      const transformedColumns = Object.values(clonedColumns).map((column) => {
+        const columnUuid = configurations?.columns?.column_names?.[column.column_name];
+        const columnConfigurations = configurations?.columns?.configurations?.[columnUuid] || {};
+        return {
+          ...column,
+          configurations: {
+            ...columnConfigurations,
+          },
+        };
+      });
+      return transformedColumns;
+    })()
+  );
   const { updateSidebarNAV } = useContext(BreadCrumbContext);
 
   const [foreignKeyDetails, setForeignKeyDetails] = useState([]);
@@ -142,11 +166,35 @@ const TableForm = ({
     return true;
   };
 
+  const getTableNameHelperText = () => {
+    if (!tableName || tableName.length === 0) {
+      return "Table name can contain letters, numbers and underscores and must be within 32 characters";
+    }
+    if (tableName.length > 32) {
+      return "Table name must be maximum 32 characters";
+    }
+    if (/^[0-9]/.test(tableName)) {
+      return "Table name cannot start with a number";
+    }
+    const tableNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+    if (!tableNameRegex.test(tableName)) {
+      return "Table name can only contain letters, numbers and underscores";
+    }
+    return "Table name can contain letters, numbers and underscores and must be within 32 characters";
+  };
+
+  const helperText = getTableNameHelperText();
+  const isErrorText = helperText !== "Table name can contain letters, numbers and underscores and must be within 32 characters";
+  
   const handleCreate = async () => {
     if (!validateTableName()) return;
     const columnNames = Object.values(columns).map((column) => column.column_name);
     if (columnNames.some((columnName) => isEmpty(columnName))) {
       toast.error('Column names cannot be empty');
+      return;
+    }
+    if (disabledCreateButton) {
+      toast.error('Invalid JSON syntax for JSONB type column');
       return;
     }
 
@@ -168,11 +216,22 @@ const TableForm = ({
 
     toast.success(`${tableName} created successfully`);
     onCreate && onCreate({ id: data.result.id, table_name: tableName });
+    posthogHelper.captureEvent('click_create_tooljet_table', {
+      workspace_id:
+        authenticationService?.currentUserValue?.organization_id ||
+        authenticationService?.currentSessionValue?.current_organization_id,
+      datasource: 'tooljet_db',
+    });
     setCreateForeignKeyInEdit(false);
   };
 
   const handleEdit = async () => {
     if (!validateTableName()) return;
+
+    if (disabledCreateButton) {
+      toast.error('Invalid JSON syntax for JSONB type column');
+      return;
+    }
 
     setFetching(true);
     const { error } = await tooljetDatabaseService.renameTable(
@@ -285,6 +344,12 @@ const TableForm = ({
                 }}
                 autoFocus
               />
+              <div 
+                className={cx("mt-1", isErrorText ? "text-danger" : "text-muted")} 
+                style={{ fontSize: '11px' }}
+              >
+                {helperText}
+              </div>
             </div>
           </div>
         </div>
@@ -303,6 +368,7 @@ const TableForm = ({
           createForeignKeyInEdit={createForeignKeyInEdit}
           selectedTable={selectedTable}
           setForeignKeys={setForeignKeys}
+          handleInputError={handleInputError}
         />
       </div>
       <DrawerFooter
@@ -318,7 +384,9 @@ const TableForm = ({
         }}
         onCreate={handleCreate}
         shouldDisableCreateBtn={
+          isErrorText ||
           isEmpty(tableName) ||
+          tableName.trim().length === 0 ||
           (!isEditMode && !Object.values(columns).every(isRequiredFieldsExistForCreateTableOperation)) ||
           isEmpty(columns) ||
           hasPrimaryKey !== true ||

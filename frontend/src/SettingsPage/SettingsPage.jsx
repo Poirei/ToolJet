@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { authenticationService, userService } from '@/_services';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,8 @@ function SettingsPage(props) {
   const focusRef = React.useRef(null);
   const { t } = useTranslation();
   const { updateSidebarNAV } = useContext(BreadCrumbContext);
+  const [helperText, setHelperText] = useState('');
+  const [validPassword, setValidPassword] = useState(true);
 
   useEffect(() => {
     updateSidebarNAV('');
@@ -37,7 +39,7 @@ function SettingsPage(props) {
   }
 
   const handleNameSplit = (fullName) => {
-    const words = fullName.split(' ');
+    const words = fullName.trim().split(' ');
     const firstName = words.length > 1 ? words.slice(0, -1).join(' ') : words[0];
     const lastName = words.length > 1 ? words[words.length - 1] : '';
     return [firstName, lastName];
@@ -84,11 +86,34 @@ function SettingsPage(props) {
     }
   };
 
+  const handlePasswordInput = (input) => {
+    setNewPassword(input);
+    const trimmedInput = input.trim();
+    if (trimmedInput.length > 100) {
+      // setHelperText('Password should be Max 100 characters');
+      setValidPassword(false);
+    } else if (trimmedInput.length < 5 && trimmedInput.length > 0) {
+      // setHelperText('Password should be at least 5 characters');
+      setValidPassword(false);
+    } else {
+      setHelperText('');
+      setValidPassword(true);
+    }
+  };
+
+  const handleConfirmPasswordInput = (input) => {
+    setConfirmPassword(input);
+  };
+
   const changePassword = async () => {
+    const trimmedCurrentPassword = currentpassword.trim();
+    const trimmedNewPassword = newPassword.trim();
+    const trimmedConfirmPassword = confirmPassword.trim();
+
     const errorMsg =
-      (currentpassword.match(/^ *$/) !== null && 'Current password') ||
-      (newPassword.match(/^ *$/) !== null && 'New password') ||
-      (confirmPassword.match(/^ *$/) !== null && 'Confirm new password');
+      (trimmedCurrentPassword.length === 0 && 'Current password') ||
+      (trimmedNewPassword.length === 0 && 'New password') ||
+      (trimmedConfirmPassword.length === 0 && 'Confirm new password');
 
     if (errorMsg) {
       toast.error(errorMsg + " can't be empty!", {
@@ -96,13 +121,13 @@ function SettingsPage(props) {
       });
       return;
     }
-    if (currentpassword === newPassword) {
+    if (trimmedCurrentPassword === trimmedNewPassword) {
       toast.error("New password can't be the same as the current one!", {
         duration: 3000,
       });
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (trimmedNewPassword !== trimmedConfirmPassword) {
       toast.error('New password and confirm new password should be same', {
         duration: 3000,
       });
@@ -111,7 +136,7 @@ function SettingsPage(props) {
 
     setPasswordChangeInProgress(true);
     try {
-      await userService.changePassword(currentpassword, newPassword);
+      await userService.changePassword(trimmedCurrentPassword, trimmedNewPassword);
       toast.success('Password updated successfully', {
         duration: 3000,
       });
@@ -119,7 +144,16 @@ function SettingsPage(props) {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      toast.error('Please verify that you have entered the correct password', {
+      const backendMessage = error?.data?.message;
+      const specificRequirementMessage = 'Password must be 12–24 characters and may include letters, numbers and special characters';
+
+      // Check if the backend message exactly matches the specific password requirement message
+      const errorMessage = 
+        backendMessage === specificRequirementMessage
+          ? backendMessage
+          : 'Please verify that you have entered the correct password';
+
+      toast.error(errorMessage, {
         duration: 3000,
       });
     }
@@ -142,9 +176,9 @@ function SettingsPage(props) {
     <Layout switchDarkMode={props.switchDarkMode} darkMode={props.darkMode}>
       <div className="wrapper">
         <div className="page-wrapper profile-page-content-wrap">
-          <div style={{ height: `calc(100vh - 2.5rem - 64px)` }}>
+          <div style={{ height: `calc(100vh - 2.5rem - 48px)` }}>
             <div className="container-xl">
-              <div className="profile-page-card">
+              <div className="card profile-page-card">
                 <div className="card-header">
                   <h3 className="card-title" data-cy="card-title-profile">
                     {t('header.profileSettingPage.profile', 'Profile')}
@@ -219,8 +253,7 @@ function SettingsPage(props) {
                   <div></div>
                 </div>
               </div>
-              <br />
-              <div className="profile-page-card">
+              <div className="card profile-page-card tw-mt-16">
                 <div className="card-header">
                   <h3 className="card-title" data-cy="card-title-change-password">
                     {t('header.profileSettingPage.changePassword', 'Change password')}
@@ -255,10 +288,13 @@ function SettingsPage(props) {
                           name="last-name"
                           placeholder={t('header.profileSettingPage.enterNewPassword', 'Enter new password')}
                           value={newPassword}
-                          onChange={(event) => setNewPassword(event.target.value)}
+                          onChange={(event) => handlePasswordInput(event.target.value)}
                           onKeyPress={newPasswordKeyPressHandler}
                           data-cy="new-password-input"
                         />
+                        <small style={{ color: !validPassword ? 'red' : undefined }} data-cy="password-helper-text">
+                          {helperText}
+                        </small>
                       </div>
                     </div>
                   </div>
@@ -274,7 +310,7 @@ function SettingsPage(props) {
                         placeholder={t('header.profileSettingPage.confirmNewPassword', 'Confirm new password')}
                         value={confirmPassword}
                         ref={focusRef}
-                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        onChange={(event) => handleConfirmPasswordInput(event.target.value)}
                         onKeyPress={confirmPasswordKeyPressHandler}
                         data-cy="confirm-password-input"
                       />
@@ -282,7 +318,7 @@ function SettingsPage(props) {
                   </div>
                   <ButtonSolid
                     isLoading={passwordChangeInProgress}
-                    disabled={newPassword.length < 5 || confirmPassword.length < 5}
+                    disabled={newPassword.trim().length < 5 || confirmPassword.trim().length < 5 || !validPassword}
                     onClick={changePassword}
                     data-cy="change-password-button"
                   >

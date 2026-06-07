@@ -14,6 +14,7 @@ Use the ToolJet-hosted database to build apps faster, and manage your data with 
 ## Enabling the ToolJet Database for your instance
 
 Requires:
+
 - PostgREST server
 - Additional configuration for ToolJet server
 
@@ -29,12 +30,12 @@ If you have openssl installed, you can run the following command `openssl rand -
 If this parameter is not specified, then PostgREST refuses authentication requests.
 :::
 
-| <div style={{ width:"100px"}}> Variable  </div>         | <div style={{ width:"100px"}}> Description  </div>                                   |
-| ---------------------------- | ----------------------------------------------- |
-| PGRST_JWT_SECRET             | JWT token client provided for authentication    |
-| PGRST_DB_URI                 | database connection string for tooljet database |
-| PGRST_LOG_LEVEL              | `info`                                          |
-| PGRST_DB_PRE_CONFIG          | postgrest.pre_config                            |
+| <div style={{ width:"100px"}}> Variable </div> | <div style={{ width:"100px"}}> Description </div> |
+| ---------------------------------------------- | ------------------------------------------------- |
+| PGRST_JWT_SECRET                               | JWT token client provided for authentication      |
+| PGRST_DB_URI                                   | database connection string for tooljet database   |
+| PGRST_LOG_LEVEL                                | `info`                                            |
+| PGRST_DB_PRE_CONFIG                            | postgrest.pre_config                              |
 
 :::info
 Please make sure that DB_URI is given in the format `postgres://[USERNAME]:[PASSWORD]@[HOST]:[PORT]/[DATABASE]`
@@ -44,17 +45,17 @@ Please make sure that DB_URI is given in the format `postgres://[USERNAME]:[PASS
 
 #### Additional ToolJet server configuration
 
-
-| <div style={{ width:"100px"}}> Variable </div>           | <div style={{ width:"100px"}}> Description </div>                                  |
-| ------------------ | -------------------------------------------- |
-| TOOLJET_DB         | Default value is `tooljet_db`                |
-| TOOLJET_DB_HOST    | database host                                |
-| TOOLJET_DB_USER    | database username                            |
-| TOOLJET_DB_PASS    | database password                            |
-| TOOLJET_DB_PORT    | database port                                |
-| PGRST_JWT_SECRET   | JWT token client provided for authentication |
-| PGRST_HOST         | postgrest database host                      |
-
+| <div style={{ width:"100px"}}> Variable </div> | <div style={{ width:"100px"}}> Description </div>               |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| TOOLJET_DB                                     | Default value is `tooljet_db`                                   |
+| TOOLJET_DB_HOST                                | database host                                                   |
+| TOOLJET_DB_USER                                | database username                                               |
+| TOOLJET_DB_PASS                                | database password                                               |
+| TOOLJET_DB_PORT                                | database port                                                   |
+| PGRST_JWT_SECRET                               | JWT token client provided for authentication                    |
+| PGRST_HOST                                     | postgrest database host                                         |
+| TOOLJET_DB_BULK_UPLOAD_MAX_ROWS                | Maximum rows allowed to bulk upload. Default value is 1000      |
+| TOOLJET_DB_BULK_UPLOAD_MAX_CSV_FILE_SIZE_MB    | Maximum file size of CSV for bulk upload. Default value is 5 MB |
 
 If you intend to make changes in the above configuration. Please refer [PostgREST configuration docs](https://postgrest.org/en/stable/configuration.html#environment-variables).
 
@@ -94,5 +95,3 @@ The ToolJet Database is available on: **[ToolJet Cloud](https://tooljet.com)**, 
 </div>
 
 </div>
-
-

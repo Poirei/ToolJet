@@ -3,30 +3,18 @@ id: code-editor
 title: Code Editor
 ---
 
-**Code Editor** component is a versatile text editor for editing code and supports several languages. 
-
-<div style={{textAlign: 'center'}}>
-
-<img className="screenshot-full" src="/img/widgets/code-editor/editor.png" alt="ToolJet - Component Reference - Code editor" />
-
-</div>
-
-<div style={{paddingTop:'24px'}}>
+The **Code Editor** component lets users write and edit code directly within the app, with syntax highlighting and formatting for various programming languages. It's ideal for configuring scripts, editing JSON, or working with custom logic in a more developer-friendly interface.
 
 ## Properties
 
-:::info
-Any property having **fx** button next to its field can be **programmatically configured**.
-:::
-
 | <div style={{ width:"100px"}}> Property </div> | <div style={{ width:"100px"}}> Description </div> | <div style={{ width:"135px"}}> Expected Value </div> |
 |:----------- |:----------- |:----------------- |
-| Placeholder |  Specifies a hint that describes the expected value.| This field requires a `String` value. |
+| Placeholder |  Specifies a hint that describes the expected value. | This field requires a `String` value. |
 | Mode |  Specifies the language to be used for the code-editor.| See `info` below for the list of all supported languages. |
-| Show line number | Show or hides line numbers to the left of the editor.| This fields expects a boolean value `{{true}}` or `{{false}}`. |
+| Show line number | Show or hides line numbers to the left of the editor.| This field expects a boolean value `{{true}}` or `{{false}}`. |
 
 :::info
-<details>
+<details id="tj-dropdown">
 <summary>Supporting all commonly used languages.</summary>
       <ul>
       <li>APL</li>
@@ -163,51 +151,35 @@ Any property having **fx** button next to its field can be **programmatically co
 </details>
 :::
 
-</div>
-
-<div style={{paddingTop:'24px'}}>
-
 ## Component Specific Actions (CSA)
 
-There are currently no CSA (Component-Specific Actions) implemented to regulate or control the component.
+The following actions of the component can be controlled using the component-specific actions (CSA), you can trigger it using an event or use a RunJS query.
 
-</div>
+|  Action  | Description | How To Access |
+|:----------- |:----------- |:---------|
+| setValue | Sets the value of the code editor.   |`components.codeeditor1.setValue('const getRandomNumber = () => Math.floor(Math.random() * 100) + 1')` |
 
-<div style={{paddingTop:'24px'}}>
+**Note:** If the setValue component specific action is executed using a JavaScript query, you will have to pass the code inside backticks. 
 
 ## Exposed Variables
 
-| <div style={{ width:"100px"}}> Variables </div> | <div style={{ width:"100px"}}> Description </div> | <div style={{ width:"135px"}}> How To Access </div> |
+| Variables | Description | How To Access |
 |:----------- |:----------- |:---------- |
-| value | Holds the current input value entered by the user in the code editor. | Accessible dynamically with JS (for e.g., `{{components.codeeditor1.value}}`). |
+| value | Holds the current input value entered by the user in the code editor. | `{{components.codeeditor1.value}}` |
 
-</div>
+## Additional Actions
 
-<div style={{paddingTop:'24px'}}>
-
-## General
-### Tooltip
-
-A Tooltip is often used to specify extra information about something when the user hovers the mouse pointer over the component.
-
-Under the <b>General</b> accordion, you can set the value in the string format. Now hovering over the component will display the string as the tooltip.
-
-</div>
-
-<div style={{paddingTop:'24px'}}>
+| <div style={{ width:"100px"}}> Action </div> | <div style={{ width:"150px"}}> Description </div> | <div style={{ width:"250px"}}> Configuration Options </div>|
+|:------------------|:------------|:------------------------------|
+| Dynamic height | Automatically adjusts the component's height based on its content. | Enable/disable the toggle button or dynamically configure the value by clicking on **fx** and entering a logical expression. |
+| Tooltip  | Provides additional information on hover. Set a display string.  | String |
 
 ## Devices
 
-| <div style={{ width:"100px"}}> Property </div> | <div style={{ width:"100px"}}> Description </div> | Expected Value |
-|:----------- |:----------- |:---------- |
-| Show on desktop | Makes the component visible in desktop view. | You can set it with the toggle button or dynamically configure the value by clicking on **fx** and entering a logical expression.|
-| Show on mobile | Makes the component visible in mobile view. | You can set it with the toggle button or dynamically configure the value by clicking on **fx** and entering a logical expression.|
-
-</div>
-
-<div style={{paddingTop:'24px'}}>
-
----
+|<div style={{ width:"100px"}}> Property </div> | <div style={{ width:"150px"}}> Description </div> | <div style={{ width:"250px"}}> Expected Value </div>|
+|:---------- |:----------- |:----------|
+| Show on desktop | Makes the component visible in desktop view. | You can set it with the toggle button or dynamically configure the value by clicking on **fx** and entering a logical expression. |
+| Show on mobile | Makes the component visible in mobile view. | You can set it with the toggle button or dynamically configure the value by clicking on **fx** and entering a logical expression. |
 
 ## Styles
 
@@ -217,4 +189,6 @@ Under the <b>General</b> accordion, you can set the value in the string format. 
 | Disable | This is `off` by default, toggle `on` the switch to lock the component and make it non-functional. You can also programmatically set the value by clicking on the **fx** button next to it. If set to `{{true}}`, the component will be locked and becomes non-functional. | By default, its value is set to `{{false}}` |
 | Border radius | Modifies the border radius of the editor. The field expects only numerical value from `1` to `100`. | Default is `0`. |
 
-</div>
+:::info
+Any property having **fx** button next to its field can be **programmatically configured**.
+:::

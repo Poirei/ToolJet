@@ -55,13 +55,13 @@
     "ssl_enabled": {
       "value": true
     },
-    "ssl_certificate":{
+    "ssl_certificate": {
       "value": "none"
     }
   },
   "properties": {
     "ssl_certificate": {
-      "label": "SSL Certificate",
+      "label": "SSL certificate",
       "key": "ssl_certificate",
       "type": "dropdown-component-flip",
       "description": "Single select dropdown for choosing certificates",
@@ -79,7 +79,7 @@
           "name": "None"
         }
       ],
-      "commonFields":{
+      "commonFields": {
         "host": {
           "label": "Host",
           "key": "host",
@@ -112,32 +112,32 @@
         }
       }
     },
-    "ca_certificate":{
+    "ca_certificate": {
       "ca_cert": {
-        "label": "CA Cert",
+        "label": "CA cert",
         "key": "ca_cert",
         "type": "textarea",
         "encrypted": true,
         "description": "Enter ca certificate"
       }
     },
-    "client_certificate":{
+    "client_certificate": {
       "client_key": {
-        "label": "Client Key",
+        "label": "Client key",
         "key": "client_key",
         "type": "textarea",
         "encrypted": true,
         "description": "Enter client key"
       },
       "client_cert": {
-        "label": "Client Cert",
+        "label": "Client cert",
         "key": "client_cert",
         "type": "textarea",
         "encrypted": true,
         "description": "Enter client certificate"
       },
       "root_cert": {
-        "label": "Root Cert",
+        "label": "Root cert",
         "key": "root_cert",
         "type": "textarea",
         "encrypted": true,

@@ -1,12 +1,13 @@
 export const usersText = {
   usersElements: {
     usersTableNameColumnHeader: "NAME",
-    usersTableEmailColumnHeader: "EMAIL",
+    usersTableRolesColumnHeader: "User role",
+    usersTableGroupsColumnHeader: "Custom groups",
     usersTableStatusColumnHeader: "STATUS",
     usersFilterLabel: "Showing",
   },
   usersPageTitle: "users",
-  breadcrumbUsersPageTitle: " Users",
+  breadcrumbUsersPageTitle: "Users",
   adminUserName: "The Developer",
   adminUserEmail: "dev@tooljet.io",
   adminUserState: "Archive",
@@ -56,7 +57,7 @@ export const usersText = {
   buttonUploadCsvFile: "Upload CSV file",
 
   helperTextBulkUpload:
-    "Download the ToolJet template to add user details or format your file in the same as the template. ToolJet won’t be able to recognise files in any other format. ",
+    "Download the template to add user details or format your file in the same way as the template. Files in any other format may not be recognized. ",
   helperTextSelectFile: "Select a CSV file to upload",
   helperTextDropFile: "Or drag and drop it here",
 };

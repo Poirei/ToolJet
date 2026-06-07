@@ -24,7 +24,16 @@ ToolJet requires the following to connect to your MongoDB.
 
 **Note:** It is recommended to create a new MongoDB user so that you can control the access levels of ToolJet.
 
-<img className="screenshot-full" src="/img/datasource-reference/mongo-db/mo-connect.png" alt="ToolJet - Mongo connection" />
+<img style={{ marginBottom:'15px' }} className="screenshot-full" src="/img/datasource-reference/mongo-db/mo-connect.png" alt="ToolJet - Mongo connection" />
+
+### Secure Sockets Layer (SSL)
+
+- **SSL Certificate**: SSL certificate to use with MongoDB. Supported Types:
+  - **None**: No SSL certificate verification.
+  - **CA Certificate**: Requires a CA certificate to verify the server certificate.
+  - **Client Certificate**: Requires a client certificate, client key, and CA certificate to authenticate with the server.
+
+<img className="screenshot-full" src="/img/datasource-reference/mongo-db/ssl.png" alt="MongoDB - SSL Certificate" />
 
 </div>
 
@@ -32,9 +41,10 @@ ToolJet requires the following to connect to your MongoDB.
 
 ## Connect Using Connecting String
 
-You can also use a **Connection String** by switching the method from the dropdown. You will be prompted to enter the details of your MongoDB connection. 
+You can also use a **Connection String** by switching the method from the dropdown. You will be prompted to enter the details of your MongoDB connection.
 
 ToolJet requires the following to connect to your MongoDB using Connecting String:
+
 - **Connection String**
 
 :::info
@@ -53,14 +63,14 @@ For example: `mongodb+srv://tooljettest:dummypassword@cluster0.urul7.mongodb.net
 
 ## Querying MongoDB
 
-1. Click on **+ Add** button of the query manager at the bottom panel of the editor and select the database added in the previous step as the data source. 
+1. Click on **+ Add** button of the query manager at the bottom panel of the editor and select the database added in the previous step as the data source.
 2. Select the operation that you want to perform and click **Save** to save the query.
 3. Click on the **Run** button to run the query.
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/mo-query.png" alt="ToolJet - Mongo query"/>
 
 :::tip
-Query results can be transformed using transformations. Read our transformations documentation to see how: [link](/docs/tutorial/transformations)
+Query results can be transformed using transformations. Read our transformations documentation to see how: [link](/docs/beta/app-builder/custom-code/transform-data)
 :::
 
 <div style={{paddingTop:'24px'}}>
@@ -97,9 +107,11 @@ Returns list of collections
 Return a document which satisfy the given filter and options. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/findOne)
 
 #### Required Parameters:
+
 - **Collection**
 
 #### Optional Parameters:
+
 - **Filter**
 - **Option**
 
@@ -110,9 +122,11 @@ Return a document which satisfy the given filter and options. [Reference](https:
 Return list of documents which satisfy the given filter and options. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/find/)
 
 #### Required Parameters:
+
 - **Collection**
 
 #### Optional Parameters:
+
 - **Filter**
 - **Option**
 
@@ -123,9 +137,11 @@ Return list of documents which satisfy the given filter and options. [Reference]
 Returns an estimation of the number of documents in the collection based on collection metadata. [Reference](https://mongodb.github.io/node-mongodb-native/4.0/classes/collection.html#estimateddocumentcount)
 
 #### Required Parameters:
+
 - **Collection**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/totalCount.png" alt="ToolJet - Mongo DB Total Count" style={{marginBottom:'15px'}}/>
@@ -135,9 +151,11 @@ Returns an estimation of the number of documents in the collection based on coll
 Returns the number of documents based on the filter. [Reference](https://mongodb.github.io/node-mongodb-native/4.0/classes/collection.html#countdocuments)
 
 #### Required Parameters:
+
 - **Collection**
 
 #### Optional Parameters:
+
 - **Filter**
 - **Option**
 
@@ -148,10 +166,12 @@ Returns the number of documents based on the filter. [Reference](https://mongodb
 Retrieve a list of distinct values for a field based on the filter. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/distinct/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Field**
 
 #### Optional Parameters:
+
 - **Filter**
 - **Option**
 
@@ -162,19 +182,22 @@ Retrieve a list of distinct values for a field based on the filter. [Reference](
 Insert a document. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/insertOne/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Document**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/insertOne.png" alt="ToolJet - Mongo DB Insert One" style={{marginBottom:'15px'}}/>
 
 #### Example:
+
 ```json
 {
-    "name": "John Doe",
-    "age": 30
+  "name": "John Doe",
+  "age": 30
 }
 ```
 
@@ -183,25 +206,28 @@ Insert a document. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-
 Insert list of documents. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/insertMany/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Document**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/insertMany.png" alt="ToolJet - Mongo DB Insert Many" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ```json
 [
-    {
-        "name": "Product1",
-        "price": 100
-    }, 
-    {
-        "name": "Product2",
-        "price": 150
-    }
+  {
+    "name": "Product1",
+    "price": 100
+  },
+  {
+    "name": "Product2",
+    "price": 150
+  }
 ]
 ```
 
@@ -210,29 +236,34 @@ Insert list of documents. [Reference](https://docs.mongodb.com/drivers/node/v4.0
 Update a document based on the filter. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/updateOne/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 - **Update**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/updateOne.png" alt="ToolJet - Mongo DB Update One" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ##### Filter
+
 ```json
 {
-    "name": "John Doe"
+  "name": "John Doe"
 }
 ```
 
 ##### Update
+
 ```json
 {
-    "$set": {
-        "age": 31
-    }
+  "$set": {
+    "age": 31
+  }
 }
 ```
 
@@ -241,29 +272,34 @@ Update a document based on the filter. [Reference](https://docs.mongodb.com/driv
 Update many documents based on the filter. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/updateMany/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 - **Update**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/updateMany.png" alt="ToolJet - Mongo DB Update Many" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ##### Filter
+
 ```json
 {
-    "status": "pending"
+  "status": "pending"
 }
 ```
 
 ##### Update
+
 ```json
 {
-    "$set": {
-        "status": "completed"
-    }
+  "$set": {
+    "status": "completed"
+  }
 }
 ```
 
@@ -272,29 +308,34 @@ Update many documents based on the filter. [Reference](https://docs.mongodb.com/
 Replace a document based on filter. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/replaceOne/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 - **Replacement**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/replaceOne.png" alt="ToolJet - Mongo DB Find One" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ##### Filter
+
 ```json
 {
-    "product_id": 123
+  "product_id": 123
 }
 ```
 
 ##### Replacement
+
 ```json
 {
-    "product_id": 123,
-    "name": "New Product",
-    "price": 200
+  "product_id": 123,
+  "name": "New Product",
+  "price": 200
 }
 ```
 
@@ -303,29 +344,34 @@ Replace a document based on filter. [Reference](https://docs.mongodb.com/drivers
 If your application requires the document after updating, use this instead of **Update One**. [Reference](https://mongodb.github.io/node-mongodb-native/4.0/classes/collection.html#findoneandupdate)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 - **Update**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/findOneUpdate.png" alt="ToolJet - Mongo DB Find One and Update" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ##### Filter
+
 ```json
 {
-    "employee_id": 456
+  "employee_id": 456
 }
 ```
 
 ##### Update
+
 ```json
 {
-    "$inc": {
-        "salary": 5000
-    }
+  "$inc": {
+    "salary": 5000
+  }
 }
 ```
 
@@ -334,29 +380,34 @@ If your application requires the document after updating, use this instead of **
 If your application requires the document after updating, use this instead of **Replace One**. [Reference](https://mongodb.github.io/node-mongodb-native/4.0/classes/collection.html#findoneandreplace)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 - **Replacement**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/findOneReplace.png" alt="ToolJet - Mongo DB Find One and Replace" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ##### Filter
+
 ```json
 {
-    "product_id": 789
+  "product_id": 789
 }
 ```
 
-##### Replacement 
+##### Replacement
+
 ```json
 {
-    "product_id": 789,
-    "name": "Updated Product",
-    "price": 300
+  "product_id": 789,
+  "name": "Updated Product",
+  "price": 300
 }
 ```
 
@@ -365,18 +416,21 @@ If your application requires the document after updating, use this instead of **
 If your application requires the document after deleting, use this instead of **Delete One**. [Reference](https://mongodb.github.io/node-mongodb-native/4.0/classes/collection.html#findoneanddelete)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/findOneDelete.png" alt="ToolJet - Mongo DB Find One and Delete" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ```json
 {
-    "order_id": 101
+  "order_id": 101
 }
 ```
 
@@ -385,30 +439,33 @@ If your application requires the document after deleting, use this instead of **
 Aggregation operations are expressions you can use to produce reduced and summarized results. [Reference](https://docs.mongodb.com/drivers/node/v4.0/fundamentals/aggregation/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Pipeline**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/aggregate.png" alt="ToolJet - Mongo DB Aggregate" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ```json
 [
-    {
-        "$match": {
-            "status": "completed"
-        }
-    }, 
-    {
-        "$group": {
-            "_id": "$product_id",
-            "totalSales": {
-                "$sum": "$amount"
-            }
-        }
+  {
+    "$match": {
+      "status": "completed"
     }
+  },
+  {
+    "$group": {
+      "_id": "$product_id",
+      "totalSales": {
+        "$sum": "$amount"
+      }
+    }
+  }
 ]
 ```
 
@@ -417,18 +474,21 @@ Aggregation operations are expressions you can use to produce reduced and summar
 Delete a record based on the filter. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/deleteOne/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/deleteOne.png" alt="ToolJet - Mongo DB Find One" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ```json
 {
-    "user_id": 123
+  "user_id": 123
 }
 ```
 
@@ -437,18 +497,21 @@ Delete a record based on the filter. [Reference](https://docs.mongodb.com/driver
 Delete many records based on the filter. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/deleteMany/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Filter**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/deleteMany.png" alt="ToolJet - Mongo DB Find One" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ```json
 {
-    "status": "cancelled"
+  "status": "cancelled"
 }
 ```
 
@@ -457,44 +520,47 @@ Delete many records based on the filter. [Reference](https://docs.mongodb.com/dr
 Perform bulk operations. [Reference](https://docs.mongodb.com/drivers/node/v4.0/usage-examples/bulkWrite/)
 
 #### Required Parameters:
+
 - **Collection**
 - **Operations**
 
 #### Optional Parameters:
+
 - **Option**
 
 <img className="screenshot-full" src="/img/datasource-reference/mongo-db/bulkOperations.png" alt="ToolJet - Mongo DB Bulk Operations" style={{marginBottom:'15px'}}/>
 
 #### Example
+
 ```json
 [
-    {
-        "insertOne": {
-            "document": {
-                "item": "apple",
-                "quantity": 50
-            }
-        }
-    }, 
-    {
-        "updateOne": {
-            "filter": {
-                "item": "orange"
-            }, 
-            "update": {
-                "$set": {
-                    "quantity": 100
-                }
-            }
-        }
-    }, 
-    {
-        "deleteOne": {
-            "filter": {
-                "item": "banana"
-            }
-        }
+  {
+    "insertOne": {
+      "document": {
+        "item": "apple",
+        "quantity": 50
+      }
     }
+  },
+  {
+    "updateOne": {
+      "filter": {
+        "item": "orange"
+      },
+      "update": {
+        "$set": {
+          "quantity": 100
+        }
+      }
+    }
+  },
+  {
+    "deleteOne": {
+      "filter": {
+        "item": "banana"
+      }
+    }
+  }
 ]
 ```
 
@@ -518,7 +584,7 @@ Dynamic queries in MongoDB can be used to create flexible and parameterized quer
 { createdAt: new Date('01/10/2020') }
 ```
 
-Reference on [mongodb extended JSON](https://docs.mongodb.com/manual/reference/mongodb-extended-json/) supported data types
+Reference on [mongodb extended JSON](https://docs.mongodb.com/manual/reference/mongodb-extended-json/) supported data types.
 
 </div>
 

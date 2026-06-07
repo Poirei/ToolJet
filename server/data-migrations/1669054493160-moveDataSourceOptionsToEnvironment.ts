@@ -1,25 +1,30 @@
-import { AppVersion } from 'src/entities/app_version.entity';
-import { DataSourceOptions } from 'src/entities/data_source_options.entity';
+import { AppVersion } from '@entities/app_version.entity';
+import { DataSourceOptions } from '@entities/data_source_options.entity';
 import { EntityManager, MigrationInterface, QueryRunner } from 'typeorm';
-import { defaultAppEnvironments } from 'src/helpers/utils.helper';
+import { defaultAppEnvironments } from '@helpers/utils.helper';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from 'src/app.module';
-import { EncryptionService } from '@services/encryption.service';
-import { Credential } from 'src/entities/credential.entity';
+import { EncryptionService } from '@modules/encryption/service';
+import { Credential } from '@entities/credential.entity';
+import { AppModule } from '@modules/app/module';
 
 export class moveDataSourceOptionsToEnvironment1669054493160 implements MigrationInterface {
   private nestApp;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create default environment for all apps
-    this.nestApp = await NestFactory.createApplicationContext(AppModule);
     const entityManager = queryRunner.manager;
     const appVersions = await entityManager.find(AppVersion);
+    if (!appVersions?.length) {
+      console.log('No app versions found, skipping migration.');
+      return;
+    }
     if (appVersions?.length) {
+      this.nestApp = await NestFactory.createApplicationContext(await AppModule.register({ IS_GET_CONTEXT: true }));
       for (const appVersion of appVersions) {
         await this.associateDataQueriesAndSources(entityManager, appVersion);
       }
     }
+    await this.nestApp.close();
   }
 
   private async associateDataQueriesAndSources(entityManager: EntityManager, appVersion: AppVersion) {

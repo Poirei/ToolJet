@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SketchPicker } from 'react-color';
+import { hexToRgba, hexToRgb } from '@/_helpers/appUtils';
 
 export const ColorPicker = function ({
   width,
@@ -11,40 +12,20 @@ export const ColorPicker = function ({
   height,
   fireEvent,
   dataCy,
+  id,
 }) {
   const { visibility, boxShadow } = styles;
   const defaultColor = properties.defaultColor;
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [color, setColor] = useState(defaultColor);
+  const colorPickerRef = useRef(null);
 
-  const getRGBAValueFromHex = (hex) => {
-    let c = hex.substring(1).split('');
-    switch (c.length) {
-      case 3:
-        c = [c[0] + c[0], c[1] + c[1], c[2] + c[2], 'ff'];
-        break;
-      case 4:
-        c = [c[0] + c[0], c[1] + c[1], c[2] + c[2], c[3] + c[3]];
-        break;
-      case 6:
-        c = [c[0] + c[1], c[2] + c[3], c[4] + c[5], 'ff'];
-        break;
-      case 8:
-        c = [c[0] + c[1], c[2] + c[3], c[4] + c[5], c[6] + c[7]];
-        break;
+  useEffect(() => {
+    const element = document.querySelector(`.ele-${id}`);
+    if (element) {
+      element.style.zIndex = showColorPicker ? '3' : '';
     }
-    c = c.map((char) => parseInt(char, 16).toString());
-    c[3] = (Math.round((parseInt(c[3], 10) / 255) * 100) / 100).toString();
-    return c;
-  };
-  const hexToRgba = (hex) => {
-    const rgbaArray = getRGBAValueFromHex(hex);
-    return `rgba(${rgbaArray[0]}, ${rgbaArray[1]}, ${rgbaArray[2]}, ${rgbaArray[3]})`;
-  };
-  const hexToRgb = (hex) => {
-    const rgbaArray = getRGBAValueFromHex(hex);
-    return `rgba(${rgbaArray[0]}, ${rgbaArray[1]}, ${rgbaArray[2]})`;
-  };
+  }, [showColorPicker, id]);
 
   useEffect(() => {
     let exposedVariables = {};
@@ -74,21 +55,19 @@ export const ColorPicker = function ({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setColor]);
+  }, []);
 
   useEffect(() => {
     let exposedVariables = {};
     if (/^#(([\dA-Fa-f]{3}){1,2}|([\dA-Fa-f]{4}){1,2})$/.test(defaultColor)) {
-      if (defaultColor !== color) {
-        exposedVariables = {
-          selectedColorHex: defaultColor,
-          selectedColorRGB: hexToRgb(defaultColor),
-          selectedColorRGBA: hexToRgba(defaultColor),
-        };
-        setExposedVariables(exposedVariables);
+      exposedVariables = {
+        selectedColorHex: defaultColor,
+        selectedColorRGB: hexToRgb(defaultColor),
+        selectedColorRGBA: hexToRgba(defaultColor),
+      };
+      setExposedVariables(exposedVariables);
 
-        setColor(defaultColor);
-      }
+      setColor(defaultColor);
     } else {
       exposedVariables = {
         selectedColorHex: undefined,
@@ -101,6 +80,21 @@ export const ColorPicker = function ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultColor]);
+
+  useEffect(() => {
+    if (showColorPicker) {
+      const handleClickOutside = (event) => {
+        if (colorPickerRef.current && !colorPickerRef.current.contains(event.target)) {
+          setShowColorPicker(false);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showColorPicker]);
 
   const handleColorChange = (colorCode) => {
     let exposedVariables = {};
@@ -133,29 +127,33 @@ export const ColorPicker = function ({
     positin: 'relative',
   };
   const baseStyle = visibility
-    ? darkMode
-      ? { ...style, color: '#ffffff', backgroundColor: '#1F2936' }
-      : { ...style, color: 'inherit' }
+    ? { ...style, color: 'var(--cc-primary-text)', backgroundColor: 'var(--cc-surface1-surface)' }
     : { display: 'none' };
 
   return (
-    <div style={{ baseStyle, boxShadow }} className="form-control" data-cy={dataCy}>
-      <div className="d-flex h-100 justify-content-between align-items-center" onClick={() => setShowColorPicker(true)}>
-        <span>{color}</span>
-        {!(color === `Invalid Color`) && <div style={backgroundColorDivStyle}></div>}
+    <div className="h-100">
+      <div
+        style={{
+          ...baseStyle,
+          boxShadow,
+          height: '100%',
+          border: `1px solid ${showColorPicker ? 'var(--cc-primary-brand)' : 'var(--cc-default-border)'}`,
+        }}
+        className="form-control"
+        data-cy={dataCy}
+      >
+        <div
+          className="d-flex h-100 justify-content-between align-items-center"
+          onClick={() => setShowColorPicker(true)}
+        >
+          <span>{color}</span>
+          {!(color === `Invalid Color`) && <div style={backgroundColorDivStyle}></div>}
+        </div>
       </div>
       {showColorPicker && (
-        <>
-          <div
-            className="position-absolute bottom-0"
-            style={{ left: 0, right: 0 }}
-            onMouseLeave={() => setShowColorPicker(false)}
-            width={width}
-          >
-            <SketchPicker color={color} onChangeComplete={handleColorChange} />
-          </div>
-          <div className="comment-overlay" onClick={() => setShowColorPicker(false)}></div>
-        </>
+        <div className="position-relative top-0 mt-1" ref={colorPickerRef} width={width}>
+          <SketchPicker color={color} onChangeComplete={handleColorChange} />
+        </div>
       )}
     </div>
   );
